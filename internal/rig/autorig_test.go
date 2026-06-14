@@ -29,8 +29,8 @@ func syntheticHumanoid() *image.NRGBA {
 func TestAutoRigPipeline(t *testing.T) {
 	src := syntheticHumanoid()
 	sk := AutoRigHumanoid(src)
-	if len(sk.Bones) != 7 {
-		t.Fatalf("본 7개 기대(hip/torso/head/armB/armF/thighB/thighF), %d개", len(sk.Bones))
+	if len(sk.Bones) != 11 {
+		t.Fatalf("본 11개 기대(2분절 사지), %d개", len(sk.Bones))
 	}
 	parts := 0
 	for _, b := range sk.Bones {
@@ -38,8 +38,8 @@ func TestAutoRigPipeline(t *testing.T) {
 			parts++
 		}
 	}
-	if parts < 6 {
-		t.Fatalf("부위 이미지 6개 이상 기대, %d개", parts)
+	if parts < 10 {
+		t.Fatalf("부위 이미지 10개 이상 기대(머리·몸통·상하박·허벅지·정강이), %d개", parts)
 	}
 
 	// rest 렌더 비어있지 않아야
