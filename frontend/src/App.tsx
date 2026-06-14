@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, HelpCircle, Images, Package, Palette, Plus, Settings, Users, Wand2, X } from "lucide-react";
+import { Bot, HelpCircle, Images, Package, Palette, Plus, Settings, Sparkles, Users, Wand2, X } from "lucide-react";
 import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession, CodexStatus } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import CharacterPanel from "./components/CharacterPanel";
@@ -46,6 +46,7 @@ export default function App() {
   const [showVariants, setShowVariants] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [makeOpen, setMakeOpen] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [character, setCharacter] = useState<CharacterDef>({
     image: null,
@@ -565,18 +566,30 @@ export default function App() {
           <Button variant="ghost" size="sm" disabled={busy} onClick={handleNewProject} title={t("new_project_tip")}>
             <Plus size={13} /> {t("new_project")}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowChat(true)} title={t("ai_studio_tip")}>
-            <Bot size={13} /> {t("ai_studio")}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowVariants(true)} title={t("variants_tip")}>
-            <Users size={13} /> {t("variants_studio")}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowEdit(true)} title={t("edit_tip")}>
-            <Wand2 size={13} /> {t("edit_studio")}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowAssets(true)} title={t("asset_studio_tip")}>
-            <Palette size={13} /> {t("asset_studio")}
-          </Button>
+          <div style={{ position: "relative" }}>
+            <Button size="sm" onClick={() => setMakeOpen((v) => !v)} title={t("make_menu_tip")}>
+              <Sparkles size={13} /> {t("make_menu")} ▾
+            </Button>
+            {makeOpen && (
+              <>
+                <div onClick={() => setMakeOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 41, background: "#fff", border: "1px solid hsl(var(--border))", borderRadius: 10, padding: 6, display: "flex", flexDirection: "column", gap: 2, minWidth: 200, boxShadow: "var(--shadow)" }}>
+                  <Button variant="ghost" size="sm" style={{ justifyContent: "flex-start" }} onClick={() => { setShowChat(true); setMakeOpen(false); }}>
+                    <Bot size={13} /> {t("ai_studio")}
+                  </Button>
+                  <Button variant="ghost" size="sm" style={{ justifyContent: "flex-start" }} onClick={() => { setShowVariants(true); setMakeOpen(false); }}>
+                    <Users size={13} /> {t("variants_studio")}
+                  </Button>
+                  <Button variant="ghost" size="sm" style={{ justifyContent: "flex-start" }} onClick={() => { setShowEdit(true); setMakeOpen(false); }}>
+                    <Wand2 size={13} /> {t("edit_studio")}
+                  </Button>
+                  <Button variant="ghost" size="sm" style={{ justifyContent: "flex-start" }} onClick={() => { setShowAssets(true); setMakeOpen(false); }}>
+                    <Palette size={13} /> {t("asset_studio")}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
           <span style={{ width: 1, height: 20, background: "hsl(var(--border))", margin: "0 2px" }} />
           <Button variant="ghost" size="sm" onClick={() => setShowGallery(true)} title={t("gallery_tip")}>
             <Images size={13} /> {t("gallery")}

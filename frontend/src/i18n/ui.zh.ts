@@ -114,6 +114,8 @@ const zh: Record<string, string> = {
   open_settings: "打开设置",
   onboard_steps: "开始：① 创建角色（让 AI 生成或上传图片）→ ② 在中间生成行走/奔跑动画 → ③ 导出。",
   onboard_ai: "用 AI 开始",
+  make_menu: "创建",
+  make_menu_tip: "AI · 参考生成 · 编辑 · 素材 — 生成工具",
   help_title: "帮助",
   help_workflow_title: "工作流程",
   help_tools_title: "各按钮说明",

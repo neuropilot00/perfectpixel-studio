@@ -114,6 +114,8 @@ const en: Record<string, string> = {
   open_settings: "Open Settings",
   onboard_steps: "Get started: ① make a character (tell the AI or upload an image) → ② generate walk/run animations in the center → ③ export.",
   onboard_ai: "Start with AI",
+  make_menu: "Create",
+  make_menu_tip: "AI · From reference · Edit · Assets — generation tools",
   help_title: "Help",
   help_workflow_title: "Workflow",
   help_tools_title: "What the buttons do",

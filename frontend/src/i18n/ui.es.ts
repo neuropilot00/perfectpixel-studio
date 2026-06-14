@@ -114,6 +114,8 @@ const es: Record<string, string> = {
   open_settings: "Abrir Ajustes",
   onboard_steps: "Empieza: ① crea un personaje (pídelo a la IA o sube una imagen) → ② genera animaciones de caminar/correr en el centro → ③ exporta.",
   onboard_ai: "Empezar con IA",
+  make_menu: "Crear",
+  make_menu_tip: "IA · Desde referencia · Editar · Recursos — herramientas de generación",
   help_title: "Ayuda",
   help_workflow_title: "Flujo de trabajo",
   help_tools_title: "Qué hace cada botón",

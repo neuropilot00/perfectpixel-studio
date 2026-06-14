@@ -114,6 +114,8 @@ const ko: Record<string, string> = {
   open_settings: "설정 열기",
   onboard_steps: "시작하기: ① AI에게 말하거나 그림을 올려 캐릭터를 만들고 → ② 가운데에서 걷기·달리기 애니메이션 생성 → ③ 내보내기.",
   onboard_ai: "AI로 시작",
+  make_menu: "만들기",
+  make_menu_tip: "AI·레퍼런스·편집·에셋 — 생성 도구 모음",
   help_title: "도움말",
   help_workflow_title: "작업 순서",
   help_tools_title: "버튼 설명",
