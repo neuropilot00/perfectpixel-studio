@@ -193,6 +193,24 @@ export namespace main {
 	        this.styleCustom = source["styleCustom"];
 	    }
 	}
+	export class GenerateCharacterRefArgs {
+	    referenceImage: string;
+	    description: string;
+	    styleKey: string;
+	    styleCustom: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GenerateCharacterRefArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.referenceImage = source["referenceImage"];
+	        this.description = source["description"];
+	        this.styleKey = source["styleKey"];
+	        this.styleCustom = source["styleCustom"];
+	    }
+	}
 	export class GenerateStateArgs {
 	    baseImage: string;
 	    description: string;

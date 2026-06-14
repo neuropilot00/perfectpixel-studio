@@ -632,6 +632,62 @@ func (a *App) GenerateAsset(args GenerateAssetArgs) (string, error) {
 	return pngDataURL(out)
 }
 
+// GenerateCharacterRefArgs는 레퍼런스 이미지 화풍으로 새 캐릭터를 만드는 요청입니다.
+type GenerateCharacterRefArgs struct {
+	ReferenceImage string `json:"referenceImage"` // 화풍 레퍼런스 dataURL
+	Description    string `json:"description"`
+	StyleKey       string `json:"styleKey"`
+	StyleCustom    string `json:"styleCustom"`
+}
+
+// GenerateCharacterRef는 레퍼런스 이미지의 화풍을 따라 설명에 맞는 다른 캐릭터를 생성합니다.
+func (a *App) GenerateCharacterRef(args GenerateCharacterRefArgs) (string, error) {
+	if strings.TrimSpace(args.Description) == "" {
+		return "", errors.New("캐릭터 설명을 입력해 주세요")
+	}
+	refRaw, err := decodeDataURL(args.ReferenceImage)
+	if err != nil {
+		return "", fmt.Errorf("레퍼런스 이미지 오류: %w", err)
+	}
+	refImg, err := decodeImage(refRaw)
+	if err != nil {
+		return "", err
+	}
+	var refBuf bytes.Buffer
+	if err := png.Encode(&refBuf, refImg); err != nil {
+		return "", err
+	}
+
+	style := sprite.ResolveStyle(args.StyleKey, args.StyleCustom)
+	prompt := sprite.BuildCharacterRefPrompt(args.Description, style)
+
+	p, err := a.provider()
+	if err != nil {
+		return "", err
+	}
+	defer a.emit("progress", map[string]any{"phase": "idle", "message": ""})
+	a.emit("progress", map[string]any{"phase": "character", "message": "레퍼런스 캐릭터 생성 중..."})
+	genCtx, releaseGen := a.genContext()
+	defer releaseGen()
+
+	raw, err := p.GenerateImage(genCtx, prompt, [][]byte{refBuf.Bytes()}, "1:1")
+	if err != nil {
+		return "", friendlyErr(err)
+	}
+	img, err := decodeImage(raw)
+	if err != nil {
+		return "", err
+	}
+	clean := sprite.RemoveBackground(img)
+	if n := sprite.PaletteSizeForStyle(args.StyleKey); n > 0 {
+		single := []*image.NRGBA{clean}
+		sprite.PixelPostProcess(single, n)
+		clean = single[0]
+	}
+	saveGalleryPNG("variant-"+galleryStamp(), clean)
+	return pngDataURL(clean)
+}
+
 // GenerateStateArgs는 상태별 스트립 생성 요청입니다.
 type GenerateStateArgs struct {
 	BaseImage   string           `json:"baseImage"` // dataURL

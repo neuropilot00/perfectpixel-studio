@@ -75,6 +75,24 @@ func BuildCharacterPrompt(description, style string) string {
 	return b.String()
 }
 
+// BuildCharacterRefPrompt는 레퍼런스 이미지의 화풍을 따라 "다른" 캐릭터를 만드는 프롬프트입니다.
+// 레퍼런스 이미지는 refImages[0]로 함께 전달되어야 합니다.
+func BuildCharacterRefPrompt(description, style string) string {
+	var b strings.Builder
+	b.WriteString("Produce one complete game-character reference sprite in a relaxed, front-facing standing pose.\n\n")
+	b.WriteString("Style reference (top priority): The attached image is a STYLE reference, NOT the subject. ")
+	b.WriteString("Match its art style EXACTLY — pixel density, outline weight, shading steps, color palette range, level of detail and overall proportions/scale. ")
+	b.WriteString("But draw a DIFFERENT character as described below; do NOT copy the reference's species, identity, colors-as-meaning, or silhouette.\n\n")
+	fmt.Fprintf(&b, "Subject (the new character to draw): %s.\n\n", strings.TrimSpace(description))
+	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
+	b.WriteString("Framing:\n")
+	b.WriteString("- A single figure, head to feet, vertically centered, occupying about three quarters of the canvas height with generous breathing room.\n")
+	b.WriteString("- Symmetric A-pose: arms eased away from the torso, feet level and shoulder-width.\n")
+	b.WriteString("- One continuous silhouette — nothing detached.\n\n")
+	b.WriteString(canvasContract())
+	return b.String()
+}
+
 // BuildItemPrompt는 단일 아이템/오브젝트(무기·물약·코인 등) 스프라이트 프롬프트를 만듭니다.
 // 캐릭터가 아니라 사물이며, 매팅을 위해 마젠타 배경을 채웁니다(결과는 투명).
 func BuildItemPrompt(description, style string) string {

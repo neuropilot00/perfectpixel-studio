@@ -23,6 +23,8 @@ export function GenerateAsset(arg1:main.GenerateAssetArgs):Promise<string>;
 
 export function GenerateCharacter(arg1:main.GenerateCharacterArgs):Promise<string>;
 
+export function GenerateCharacterRef(arg1:main.GenerateCharacterRefArgs):Promise<string>;
+
 export function GenerateState(arg1:main.GenerateStateArgs):Promise<main.StateResult>;
 
 export function GetGalleryPath():Promise<string>;
