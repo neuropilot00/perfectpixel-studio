@@ -17,13 +17,103 @@ type frameContent struct {
 	bottom int     // 베이스라인(콘텐츠 최하단 행, 스트립 좌표)
 }
 
+// keepColMask는 span 안에서 "메인 몸체" 컬럼만 true로 표시합니다.
+// 옆 포즈에서 빈 컬럼 너머로 새어든 작고 동떨어진 조각(발끝/신발 등)을 제거하기 위함.
+// 컬럼 알파 프로파일에서 런(run)을 찾아, 최대 질량 런과 가깝거나 충분히 큰 런만 유지합니다.
+func keepColMask(strip *image.NRGBA, span colSpan, h int) []bool {
+	w := span.end - span.start
+	mask := make([]bool, w)
+	if w <= 0 {
+		return mask
+	}
+	col := make([]float64, w)
+	for i := 0; i < w; i++ {
+		x := span.start + i
+		var s float64
+		for y := 0; y < h; y++ {
+			s += float64(strip.Pix[strip.PixOffset(x, y)+3])
+		}
+		col[i] = s
+	}
+	type run struct {
+		s, e int
+		mass float64
+	}
+	var runs []run
+	gapTol := 2 // 2px 이하 빈틈은 같은 런으로 (압축 잡음 흡수)
+	i := 0
+	for i < w {
+		if col[i] <= 0 {
+			i++
+			continue
+		}
+		j := i
+		var m float64
+		gap := 0
+		last := i
+		for j < w {
+			if col[j] > 0 {
+				m += col[j]
+				last = j
+				gap = 0
+			} else {
+				gap++
+				if gap > gapTol {
+					break
+				}
+			}
+			j++
+		}
+		runs = append(runs, run{i, last + 1, m})
+		i = j
+	}
+	if len(runs) <= 1 {
+		for k := range mask {
+			mask[k] = true
+		}
+		return mask
+	}
+	mi := 0
+	for k := range runs {
+		if runs[k].mass > runs[mi].mass {
+			mi = k
+		}
+	}
+	main := runs[mi]
+	nearGap := int(float64(w) * 0.06)
+	if nearGap < 3 {
+		nearGap = 3
+	}
+	for _, r := range runs {
+		keep := r.mass >= 0.15*main.mass
+		if !keep {
+			dist := 0
+			if r.e <= main.s {
+				dist = main.s - r.e
+			} else if r.s >= main.e {
+				dist = r.s - main.e
+			}
+			keep = dist <= nearGap
+		}
+		if keep {
+			for x := r.s; x < r.e; x++ {
+				mask[x] = true
+			}
+		}
+	}
+	return mask
+}
+
 // extractContent는 컬럼 구간 span 안의 불투명 픽셀을 bbox로 잘라냅니다.
-// 소유권 추적(연결요소) 없이 구간 내 모든 콘텐츠를 모으므로, 팔다리가 분리되어도
-// 한 포즈로 안전하게 합쳐집니다.
+// 메인 몸체에서 동떨어진 작은 조각(옆 포즈 누출)은 keepColMask로 걸러냅니다.
 func extractContent(strip *image.NRGBA, span colSpan, h int) frameContent {
+	keep := keepColMask(strip, span, h)
 	minX, minY, maxX, maxY := span.end, h, span.start-1, -1
 	var sumWX, sumW float64
 	for x := span.start; x < span.end; x++ {
+		if !keep[x-span.start] {
+			continue
+		}
 		for y := 0; y < h; y++ {
 			a := strip.Pix[strip.PixOffset(x, y)+3]
 			if a <= alphaThreshold {
@@ -52,6 +142,9 @@ func extractContent(strip *image.NRGBA, span colSpan, h int) frameContent {
 	dst := image.NewNRGBA(image.Rect(0, 0, gw, gh))
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {
+			if !keep[x-span.start] {
+				continue
+			}
 			si := strip.PixOffset(x, y)
 			if strip.Pix[si+3] <= alphaThreshold {
 				continue

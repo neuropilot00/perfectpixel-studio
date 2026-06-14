@@ -205,7 +205,8 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 	b.WriteString("Row layout:\n")
 	fmt.Fprintf(&b, "- Place exactly %d poses in one horizontal row, evenly spaced left to right — %d poses, no more and no fewer. Count them before finishing.\n", n, n)
 	b.WriteString("- Every pose is the SAME size at one shared scale, each filling about 70-85% of the canvas height. No pose may be noticeably smaller, larger, or set further back than the others.\n")
-	b.WriteString("- Each pose is ONE whole, connected body. Never split a body into separate pieces, and never let two poses touch, overlap, or merge — leave a clear band of plain background between every pair.\n")
+	b.WriteString("- Each pose is ONE whole, connected body. Never split a body into separate pieces, and never let two poses touch, overlap, or merge.\n")
+	b.WriteString("- Leave a WIDE empty gutter of pure background between neighbouring poses — at least 15% of one cell's width, fully empty. No limb, foot, hair, cape or weapon of one pose may cross into a neighbour's space or into that gutter; if a pose would reach over, scale the whole figure down so it stays fully inside its own slot with clear margins on all sides.\n")
 	b.WriteString("- Center each pose's torso horizontally in its share of the row; arms, legs and head move, but the torso stays put and no body part is cut off by the canvas edge.\n")
 	b.WriteString("- Keep all poses standing on one common ground line, unless the action leaves the ground (a jump).\n\n")
 
