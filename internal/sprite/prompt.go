@@ -202,13 +202,13 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 		b.WriteString("It plays once: give it a clear anticipation, a peak, and a settle that comes to rest.\n\n")
 	}
 
-	b.WriteString("Row layout:\n")
-	fmt.Fprintf(&b, "- Place exactly %d poses in one horizontal row, evenly spaced left to right — %d poses, no more and no fewer. Count them before finishing.\n", n, n)
-	b.WriteString("- Every pose is the SAME size at one shared scale, each filling about 70-85% of the canvas height. No pose may be noticeably smaller, larger, or set further back than the others.\n")
-	b.WriteString("- Each pose is ONE whole, connected body. Never split a body into separate pieces, and never let two poses touch, overlap, or merge.\n")
-	b.WriteString("- Leave a WIDE empty gutter of pure background between neighbouring poses — at least 15% of one cell's width, fully empty. No limb, foot, hair, cape or weapon of one pose may cross into a neighbour's space or into that gutter; if a pose would reach over, scale the whole figure down so it stays fully inside its own slot with clear margins on all sides.\n")
-	b.WriteString("- Center each pose's torso horizontally in its share of the row; arms, legs and head move, but the torso stays put and no body part is cut off by the canvas edge.\n")
-	b.WriteString("- Keep all poses standing on one common ground line, unless the action leaves the ground (a jump).\n\n")
+	b.WriteString("Sprite-sheet grid (place each pose by an explicit grid — this is how it is cut later, obey exactly):\n")
+	fmt.Fprintf(&b, "- Divide the canvas into exactly %d equal-width vertical cells side by side (a 1×%d grid), each the same size. Draw exactly one pose per cell — %d poses total, no more, no fewer. Count them before finishing.\n", n, n, n)
+	b.WriteString("- CENTER each pose inside its own cell: the body's center of mass sits on that cell's vertical centre line, with equal empty margin on the left and right of the pose within the cell.\n")
+	b.WriteString("- Each pose stays FULLY inside its own cell with clear empty margins on all four sides; nothing — limb, foot, hair, cape, weapon, effect — crosses a cell boundary into a neighbour. If a pose would reach over, scale the whole figure down so it fits with margin.\n")
+	b.WriteString("- Every pose is the SAME size at one shared scale, each filling about 70-80% of the cell height. No pose larger, smaller, or set further back than the others.\n")
+	b.WriteString("- Each pose is ONE whole, connected body — never split into separate pieces; poses never touch, overlap, or merge.\n")
+	b.WriteString("- All poses stand on one common ground baseline near the bottom of the cells, unless the action leaves the ground (a jump), then vary height to show the arc.\n\n")
 
 	b.WriteString(canvasContract())
 	b.WriteString("\n")
