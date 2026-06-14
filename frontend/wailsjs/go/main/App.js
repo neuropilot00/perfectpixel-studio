@@ -26,6 +26,10 @@ export function ExportProject(arg1) {
   return window['go']['main']['App']['ExportProject'](arg1);
 }
 
+export function GenerateAsset(arg1) {
+  return window['go']['main']['App']['GenerateAsset'](arg1);
+}
+
 export function GenerateCharacter(arg1) {
   return window['go']['main']['App']['GenerateCharacter'](arg1);
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Images, Package, Plus, Settings, X } from "lucide-react";
+import { Images, Package, Palette, Plus, Settings, X } from "lucide-react";
 import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import CharacterPanel from "./components/CharacterPanel";
@@ -7,6 +7,7 @@ import GalleryModal from "./components/GalleryModal";
 import PreviewPanel from "./components/PreviewPanel";
 import SettingsModal, { ISettings } from "./components/SettingsModal";
 import StatesPanel from "./components/StatesPanel";
+import AssetStudioModal from "./components/AssetStudioModal";
 import { Button } from "./components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./components/ui/dialog";
 import { CharacterDef, DirectionInfo, FALLBACK_PRESETS, FrameItem, PresetInfo, StateDef, selectedFrames, uid } from "./types";
@@ -24,6 +25,7 @@ interface IToast {
 const hasActiveKey = (s: ISettings | null) => !!s?.providers?.[s.provider]?.hasKey;
 
 const PROVIDER_LABELS: Record<string, string> = {
+  codex: "Codex CLI",
   gemini: "Gemini",
   openrouter: "OpenRouter",
   fal: "fal.ai",
@@ -35,6 +37,7 @@ export default function App() {
   const [settings, setSettings] = useState<ISettings | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [showAssets, setShowAssets] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [character, setCharacter] = useState<CharacterDef>({
     image: null,
@@ -529,6 +532,9 @@ export default function App() {
           <Button variant="ghost" size="sm" disabled={busy} onClick={handleNewProject} title={t("new_project_tip")}>
             <Plus size={13} /> {t("new_project")}
           </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowAssets(true)} title={t("asset_studio_tip")}>
+            <Palette size={13} /> {t("asset_studio")}
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowGallery(true)} title={t("gallery_tip")}>
             <Images size={13} /> {t("gallery")}
           </Button>
@@ -608,6 +614,8 @@ export default function App() {
       {showGallery && (
         <GalleryModal onClose={() => setShowGallery(false)} onError={(m) => toast("error", m)} />
       )}
+
+      {showAssets && <AssetStudioModal onClose={() => setShowAssets(false)} onToast={toast} />}
 
       <Dialog open={confirmNew} onOpenChange={(o) => !o && setConfirmNew(false)}>
         <DialogContent className="w-[380px]">

@@ -75,6 +75,49 @@ func BuildCharacterPrompt(description, style string) string {
 	return b.String()
 }
 
+// BuildItemPrompt는 단일 아이템/오브젝트(무기·물약·코인 등) 스프라이트 프롬프트를 만듭니다.
+// 캐릭터가 아니라 사물이며, 매팅을 위해 마젠타 배경을 채웁니다(결과는 투명).
+func BuildItemPrompt(description, style string) string {
+	var b strings.Builder
+	b.WriteString("Produce one single game ITEM/OBJECT sprite (a prop, not a character).\n\n")
+	fmt.Fprintf(&b, "Subject: %s.\n\n", strings.TrimSpace(description))
+	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
+	b.WriteString("Framing:\n")
+	b.WriteString("- A single object, centered, occupying about two thirds of the canvas with even margins.\n")
+	b.WriteString("- One connected object as a clean icon-like sprite. No character, no hands holding it, no scene.\n\n")
+	b.WriteString(canvasContract())
+	b.WriteString("\n")
+	b.WriteString(rejectClause())
+	return b.String()
+}
+
+// BuildBackgroundPrompt는 게임 배경/씬 한 장(불투명, 와이드) 프롬프트를 만듭니다.
+// 키잉/투명 없음 — 가장자리까지 꽉 찬 불투명 이미지.
+func BuildBackgroundPrompt(description, style string) string {
+	var b strings.Builder
+	b.WriteString("Produce one complete game BACKGROUND / scene illustration, filling the entire frame edge to edge.\n\n")
+	fmt.Fprintf(&b, "Scene: %s.\n\n", strings.TrimSpace(description))
+	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
+	b.WriteString("Rules:\n")
+	b.WriteString("- This is an OPAQUE background — fill every pixel, no transparency, no alpha, no checkerboard.\n")
+	b.WriteString("- Side-scroller friendly composition: clear sky/upper area and a ground/horizon band, with parallax depth (far, mid, near layers).\n")
+	b.WriteString("- No characters, no UI, no text, no watermark, no frame or border. Just the environment.\n")
+	return b.String()
+}
+
+// BuildTilePrompt는 이음새가 맞는(seamless) 정사각 타일 프롬프트를 만듭니다.
+func BuildTilePrompt(description, style string) string {
+	var b strings.Builder
+	b.WriteString("Produce one SEAMLESS, perfectly TILEABLE square terrain/material tile for a 2D game.\n\n")
+	fmt.Fprintf(&b, "Material: %s.\n\n", strings.TrimSpace(description))
+	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
+	b.WriteString("Tiling rules (critical):\n")
+	b.WriteString("- The pattern must wrap seamlessly: the left edge continues into the right edge, and the top edge into the bottom edge, with NO visible seam when repeated in a grid.\n")
+	b.WriteString("- Even, repeating texture across the whole square. No single focal object, no character, no scene, no lighting gradient, no vignette.\n")
+	b.WriteString("- Opaque, fill every pixel. No text, no border, no frame, no watermark.\n")
+	return b.String()
+}
+
 // BuildStripPrompt는 상태별 가로 스트립 생성 프롬프트를 만듭니다.
 func BuildStripPrompt(description, style string, spec StateSpec, feedback string) string {
 	var b strings.Builder

@@ -425,6 +425,77 @@ func (a *App) GenerateCharacter(args GenerateCharacterArgs) (string, error) {
 	return pngDataURL(clean)
 }
 
+// GenerateAssetArgs는 비캐릭터 에셋(배경/타일/아이템) 생성 요청입니다.
+type GenerateAssetArgs struct {
+	Kind        string `json:"kind"` // item | background | tile
+	Description string `json:"description"`
+	StyleKey    string `json:"styleKey"`
+	StyleCustom string `json:"styleCustom"`
+}
+
+// GenerateAsset는 배경/타일/아이템 등 비캐릭터 스프라이트를 생성합니다.
+// 아이템은 배경 제거(투명), 배경/타일은 불투명으로 처리합니다.
+func (a *App) GenerateAsset(args GenerateAssetArgs) (string, error) {
+	if strings.TrimSpace(args.Description) == "" {
+		return "", errors.New("설명을 입력해 주세요")
+	}
+	style := sprite.ResolveStyle(args.StyleKey, args.StyleCustom)
+
+	var prompt, aspect string
+	switch args.Kind {
+	case "item":
+		prompt, aspect = sprite.BuildItemPrompt(args.Description, style), "1:1"
+	case "background":
+		prompt, aspect = sprite.BuildBackgroundPrompt(args.Description, style), "16:9"
+	case "tile":
+		prompt, aspect = sprite.BuildTilePrompt(args.Description, style), "1:1"
+	default:
+		return "", fmt.Errorf("지원하지 않는 에셋 종류입니다: %s", args.Kind)
+	}
+
+	p, err := a.provider()
+	if err != nil {
+		return "", err
+	}
+	defer a.emit("progress", map[string]any{"phase": "idle", "message": ""})
+	a.emit("progress", map[string]any{"phase": "asset", "message": args.Kind + " 생성 중..."})
+
+	genCtx, releaseGen := a.genContext()
+	defer releaseGen()
+	raw, err := p.GenerateImage(genCtx, prompt, nil, aspect)
+	if err != nil {
+		return "", friendlyErr(err)
+	}
+	img, err := decodeImage(raw)
+	if err != nil {
+		return "", err
+	}
+
+	var out image.Image
+	if args.Kind == "item" {
+		// 아이템: 마젠타 키잉 → 투명 + (스타일에 맞으면) 픽셀화
+		clean := sprite.RemoveBackground(img)
+		if n := sprite.PaletteSizeForStyle(args.StyleKey); n > 0 {
+			single := []*image.NRGBA{clean}
+			sprite.PixelPostProcess(single, n)
+			clean = single[0]
+		}
+		out = clean
+	} else {
+		// 배경/타일: 불투명 유지, 배경 제거 없이 스타일 팔레트만 적용
+		nr := sprite.ToNRGBA(img)
+		if n := sprite.PaletteSizeForStyle(args.StyleKey); n > 0 {
+			single := []*image.NRGBA{nr}
+			sprite.PixelPostProcess(single, n)
+			nr = single[0]
+		}
+		out = nr
+	}
+
+	saveGalleryPNG("asset-"+args.Kind+"-"+galleryStamp(), out)
+	return pngDataURL(out)
+}
+
 // GenerateStateArgs는 상태별 스트립 생성 요청입니다.
 type GenerateStateArgs struct {
 	BaseImage   string           `json:"baseImage"` // dataURL

@@ -89,6 +89,24 @@ export namespace main {
 	        this.modTime = source["modTime"];
 	    }
 	}
+	export class GenerateAssetArgs {
+	    kind: string;
+	    description: string;
+	    styleKey: string;
+	    styleCustom: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GenerateAssetArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.description = source["description"];
+	        this.styleKey = source["styleKey"];
+	        this.styleCustom = source["styleCustom"];
+	    }
+	}
 	export class GenerateCharacterArgs {
 	    description: string;
 	    styleKey: string;

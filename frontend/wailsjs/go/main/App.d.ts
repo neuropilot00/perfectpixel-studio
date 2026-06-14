@@ -15,6 +15,8 @@ export function DeleteGalleryImage(arg1:string):Promise<void>;
 
 export function ExportProject(arg1:main.ExportArgs):Promise<string>;
 
+export function GenerateAsset(arg1:main.GenerateAssetArgs):Promise<string>;
+
 export function GenerateCharacter(arg1:main.GenerateCharacterArgs):Promise<string>;
 
 export function GenerateState(arg1:main.GenerateStateArgs):Promise<main.StateResult>;
