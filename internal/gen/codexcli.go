@@ -25,11 +25,50 @@ func NewCodexCLI(model string) *CodexCLI {
 	if model == "" {
 		model = "gpt-image-2"
 	}
-	bin := os.Getenv("CODEX_BIN")
-	if bin == "" {
-		bin = "codex"
+	return &CodexCLI{Bin: CodexBinPath(), Model: model, Timeout: 300 * time.Second}
+}
+
+// commonBinDirs는 GUI 앱(Finder 실행 시 최소 PATH)에서도 CLI를 찾기 위한 후보 디렉토리입니다.
+func commonBinDirs() []string {
+	home, _ := os.UserHomeDir()
+	return []string{
+		"/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin",
+		filepath.Join(home, ".local", "bin"),
+		filepath.Join(home, "go", "bin"),
+		filepath.Join(home, ".bun", "bin"),
+		"/opt/homebrew/opt/node/bin",
 	}
-	return &CodexCLI{Bin: bin, Model: model, Timeout: 300 * time.Second}
+}
+
+// CodexBinPath는 codex 실행 파일의 절대 경로를 견고하게 찾습니다.
+// Finder로 띄운 앱은 PATH가 최소라 LookPath만으론 못 찾으므로 일반 설치 경로도 탐색합니다.
+func CodexBinPath() string {
+	if b := os.Getenv("CODEX_BIN"); b != "" {
+		return b
+	}
+	if p, err := exec.LookPath("codex"); err == nil {
+		return p
+	}
+	for _, d := range commonBinDirs() {
+		c := filepath.Join(d, "codex")
+		if fi, err := os.Stat(c); err == nil && !fi.IsDir() {
+			return c
+		}
+	}
+	return "codex"
+}
+
+// AugmentedEnv는 자식 프로세스(codex)가 node 등 의존 도구를 찾을 수 있도록 PATH를 보강합니다.
+func AugmentedEnv() []string {
+	env := os.Environ()
+	extra := strings.Join(commonBinDirs(), ":")
+	for i, kv := range env {
+		if strings.HasPrefix(kv, "PATH=") {
+			env[i] = "PATH=" + kv[len("PATH="):] + ":" + extra
+			return env
+		}
+	}
+	return append(env, "PATH="+extra)
 }
 
 // GenerateImage는 codex exec를 비대화형으로 실행해 PNG 파일을 생성하고 그 바이트를 반환합니다.
@@ -64,6 +103,7 @@ func (c *CodexCLI) GenerateImage(ctx context.Context, prompt string, refImages [
 		"exec", "--skip-git-repo-check", "--sandbox", "workspace-write", instruction)
 	cmd.Dir = dir
 	cmd.Stdin = nil // /dev/null — stdin 대기 방지
+	cmd.Env = AugmentedEnv()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
@@ -119,6 +159,7 @@ func tailString(s string, n int) string {
 // (API 키가 없으므로 바이너리 존재 + 버전 확인만 수행합니다.)
 func (c *CodexCLI) ValidateKey(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, c.Bin, "--version")
+	cmd.Env = AugmentedEnv()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("Codex CLI를 찾을 수 없습니다(%q). 설치 후 'codex login'으로 로그인해 주세요: %s",
 			c.Bin, tailString(string(out), 200))

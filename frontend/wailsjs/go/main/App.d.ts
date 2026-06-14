@@ -7,6 +7,10 @@ export function CancelGeneration():Promise<void>;
 
 export function ClearSession():Promise<void>;
 
+export function CodexLogin():Promise<main.CodexAuthInfo>;
+
+export function CodexStatus():Promise<main.CodexAuthInfo>;
+
 export function DeleteGalleryImage(arg1:string):Promise<void>;
 
 export function ExportProject(arg1:main.ExportArgs):Promise<string>;

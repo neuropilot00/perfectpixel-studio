@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { SaveProviderKey, SaveProviderModel, SetProvider } from "../../wailsjs/go/main/App";
+import { SaveProviderKey, SaveProviderModel, SetProvider, CodexStatus, CodexLogin } from "../../wailsjs/go/main/App";
 import { useI18n, LANGUAGES, Lang } from "../i18n";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
@@ -44,6 +44,35 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
   const [model, setModel] = useState(settings.providers?.[settings.provider || "gemini"]?.model ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [codexAuth, setCodexAuth] = useState<{ installed: boolean; loggedIn: boolean; detail: string } | null>(null);
+  const [codexBusy, setCodexBusy] = useState(false);
+
+  const refreshCodex = async () => {
+    try {
+      setCodexAuth((await CodexStatus()) as any);
+    } catch {
+      /* 무시 */
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "codex") refreshCodex();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const codexLogin = async () => {
+    if (codexBusy) return;
+    setCodexBusy(true);
+    setError("");
+    try {
+      setCodexAuth((await CodexLogin()) as any);
+    } catch (e) {
+      setError(String(e));
+      refreshCodex();
+    } finally {
+      setCodexBusy(false);
+    }
+  };
 
   const info = settings.providers?.[tab];
   const meta = PROVIDERS.find((p) => p.key === tab)!;
@@ -140,6 +169,26 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
               Codex CLI {isActive && <em className="not-italic text-primary">{t("in_use")}</em>}
             </Label>
             <p className="hint">{t("codex_no_key")}</p>
+            <div className="row" style={{ alignItems: "center", gap: 8 }}>
+              <span>
+                {codexAuth == null
+                  ? "…"
+                  : !codexAuth.installed
+                    ? `⚠️ ${t("codex_not_installed")}`
+                    : codexAuth.loggedIn
+                      ? `✅ ${t("codex_logged_in")}`
+                      : `🔒 ${t("codex_need_login")}`}
+              </span>
+              {codexAuth?.installed && !codexAuth.loggedIn && (
+                <Button variant="outline" size="sm" onClick={codexLogin} disabled={codexBusy}>
+                  {codexBusy && <Loader2 size={13} className="animate-spin" />}
+                  {codexBusy ? t("codex_logging_in") : t("codex_login_btn")}
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={refreshCodex} disabled={codexBusy}>
+                {t("codex_refresh")}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="field">

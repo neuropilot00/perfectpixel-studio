@@ -10,10 +10,12 @@ import (
 	"image"
 	"image/png"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"perfectpixel/internal/config"
 	"perfectpixel/internal/gen"
@@ -185,6 +187,56 @@ func (a *App) SetProvider(provider string) error {
 	s := config.Load()
 	s.Provider = provider
 	return config.Save(s)
+}
+
+// ---------- Codex CLI 인증 ----------
+
+// CodexAuthInfo는 Codex CLI 설치/로그인 상태입니다.
+type CodexAuthInfo struct {
+	Installed bool   `json:"installed"`
+	LoggedIn  bool   `json:"loggedIn"`
+	Detail    string `json:"detail"`
+	BinPath   string `json:"binPath"`
+}
+
+// CodexStatus는 codex CLI 설치 및 로그인 상태를 확인합니다.
+func (a *App) CodexStatus() CodexAuthInfo {
+	bin := gen.CodexBinPath()
+	info := CodexAuthInfo{BinPath: bin}
+	verCmd := exec.Command(bin, "--version")
+	verCmd.Env = gen.AugmentedEnv()
+	if _, err := verCmd.CombinedOutput(); err != nil {
+		info.Detail = "Codex CLI를 찾을 수 없습니다. 'npm i -g @openai/codex' 등으로 설치해 주세요."
+		return info
+	}
+	info.Installed = true
+
+	stCmd := exec.Command(bin, "login", "status")
+	stCmd.Env = gen.AugmentedEnv()
+	out, err := stCmd.CombinedOutput()
+	detail := strings.TrimSpace(string(out))
+	info.Detail = detail
+	info.LoggedIn = err == nil && strings.Contains(strings.ToLower(detail), "logged in")
+	return info
+}
+
+// CodexLogin은 codex 로그인 플로우를 실행합니다(브라우저 OAuth가 열립니다).
+// 이미 로그인되어 있으면 즉시 반환합니다.
+func (a *App) CodexLogin() (CodexAuthInfo, error) {
+	bin := gen.CodexBinPath()
+	if cur := a.CodexStatus(); cur.LoggedIn {
+		return cur, nil
+	}
+	ctx, cancel := context.WithTimeout(a.ctx, 180*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, "login")
+	cmd.Env = gen.AugmentedEnv()
+	out, err := cmd.CombinedOutput()
+	info := a.CodexStatus()
+	if err != nil && !info.LoggedIn {
+		return info, fmt.Errorf("codex 로그인 실패: %v — %s", err, strings.TrimSpace(string(out)))
+	}
+	return info, nil
 }
 
 // ---------- 세션 저장/복원 ----------

@@ -10,6 +10,14 @@ export function ClearSession() {
   return window['go']['main']['App']['ClearSession']();
 }
 
+export function CodexLogin() {
+  return window['go']['main']['App']['CodexLogin']();
+}
+
+export function CodexStatus() {
+  return window['go']['main']['App']['CodexStatus']();
+}
+
 export function DeleteGalleryImage(arg1) {
   return window['go']['main']['App']['DeleteGalleryImage'](arg1);
 }

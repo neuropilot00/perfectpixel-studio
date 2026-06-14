@@ -1,5 +1,23 @@
 export namespace main {
 	
+	export class CodexAuthInfo {
+	    installed: boolean;
+	    loggedIn: boolean;
+	    detail: string;
+	    binPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CodexAuthInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.loggedIn = source["loggedIn"];
+	        this.detail = source["detail"];
+	        this.binPath = source["binPath"];
+	    }
+	}
 	export class ExportState {
 	    name: string;
 	    fps: number;
