@@ -46,6 +46,8 @@ const ko: Record<string, string> = {
   toast_model_saved: "{provider} 모델이 저장되었습니다.",
   toast_provider_active: "{provider}을(를) 사용합니다.",
   language: "언어",
+  help_codex: "로컬 Codex CLI의 내장 이미지 생성(gpt-image-2)을 사용합니다. API 키가 필요 없고 codex 로그인 세션을 씁니다. 터미널에서 'codex login'으로 로그인되어 있어야 합니다. (PixelLab 미사용)",
+  codex_no_key: "API 키 불필요 — codex 로그인 세션을 사용합니다. 한 장당 약 30~60초 걸립니다.",
   help_gemini: "Google AI Studio에서 발급받은 키를 입력하세요.",
   help_openrouter: "openrouter.ai → Keys에서 발급받은 키를 입력하세요.",
   help_fal: "fal.ai 대시보드에서 발급받은 키를 입력하세요. (.env의 FAL_KEY도 자동 인식)",

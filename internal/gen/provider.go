@@ -12,6 +12,7 @@ import (
 
 // 지원 프로바이더 식별자
 const (
+	ProviderCodex      = "codex" // 로컬 Codex CLI ($imagegen / gpt-image-2) — API 키 불필요
 	ProviderGemini     = "gemini"
 	ProviderOpenRouter = "openrouter"
 	ProviderFal        = "fal"
@@ -19,10 +20,19 @@ const (
 )
 
 // SupportedProviders는 지원 프로바이더 식별자 목록입니다 (UI 노출 순서).
-var SupportedProviders = []string{ProviderGemini, ProviderOpenRouter, ProviderFal, ProviderBytePlus}
+// Codex CLI를 맨 앞에 둬 키 없이 바로 쓸 수 있게 합니다.
+var SupportedProviders = []string{ProviderCodex, ProviderGemini, ProviderOpenRouter, ProviderFal, ProviderBytePlus}
+
+// IsKeyless는 API 키 없이(로컬 CLI 로그인으로) 동작하는 프로바이더인지 여부입니다.
+func IsKeyless(provider string) bool {
+	return provider == ProviderCodex
+}
 
 // modelCatalog는 프로바이더별 선택 가능한 이미지 모델 목록입니다 (최신 모델이 맨 앞).
 var modelCatalog = map[string][]string{
+	ProviderCodex: {
+		"gpt-image-2", // Codex 내장 $imagegen 이미지 모델
+	},
 	ProviderGemini: {
 		"gemini-3-pro-image", // Nano Banana Pro (최신)
 		"gemini-3-pro-image-preview",
@@ -65,6 +75,8 @@ type Provider interface {
 // DefaultModelFor는 프로바이더별 기본 모델을 반환합니다.
 func DefaultModelFor(provider string) string {
 	switch provider {
+	case ProviderCodex:
+		return "gpt-image-2"
 	case ProviderOpenRouter:
 		return "google/gemini-3-pro-image-preview"
 	case ProviderFal:
@@ -79,6 +91,8 @@ func DefaultModelFor(provider string) string {
 // ProviderLabel은 UI 표시용 이름입니다.
 func ProviderLabel(provider string) string {
 	switch provider {
+	case ProviderCodex:
+		return "Codex CLI"
 	case ProviderOpenRouter:
 		return "OpenRouter"
 	case ProviderFal:
@@ -96,6 +110,8 @@ func New(provider, apiKey, model string) (Provider, error) {
 		model = DefaultModelFor(provider)
 	}
 	switch provider {
+	case ProviderCodex:
+		return NewCodexCLI(model), nil
 	case ProviderGemini, "":
 		return NewClient(apiKey, model), nil
 	case ProviderOpenRouter:

@@ -44,7 +44,7 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) provider() (gen.Provider, error) {
 	s := config.Load()
 	cfg := s.Cfg(s.Provider)
-	if cfg.APIKey == "" {
+	if cfg.APIKey == "" && !gen.IsKeyless(s.Provider) {
 		return nil, fmt.Errorf("%s API 키가 설정되지 않았습니다. 설정에서 입력해 주세요", gen.ProviderLabel(s.Provider))
 	}
 	return gen.New(s.Provider, cfg.APIKey, cfg.Model)
@@ -130,7 +130,7 @@ func (a *App) GetSettings() SettingsInfo {
 			model = gen.DefaultModelFor(p)
 		}
 		info.Providers[p] = ProviderInfo{
-			HasKey:     cfg.APIKey != "",
+			HasKey:     cfg.APIKey != "" || gen.IsKeyless(p), // 키 불필요 프로바이더는 항상 준비됨으로 표시
 			KeyPreview: keyPreview(cfg.APIKey),
 			Model:      model,
 			Models:     gen.ModelsFor(p),
@@ -160,6 +160,8 @@ func (a *App) SaveProviderKey(provider, key string) error {
 // SaveProviderModel은 프로바이더의 이미지 모델을 변경합니다 (빈 값이면 기본 모델로 복원).
 func (a *App) SaveProviderModel(provider, model string) error {
 	switch provider {
+	case gen.ProviderCodex:
+		return nil // Codex는 단일 내장 모델만 사용 — 모델 변경 없음
 	case gen.ProviderGemini, gen.ProviderOpenRouter, gen.ProviderFal, gen.ProviderBytePlus:
 	default:
 		return fmt.Errorf("지원하지 않는 프로바이더입니다: %s", provider)
@@ -176,7 +178,7 @@ func (a *App) SaveProviderModel(provider, model string) error {
 // SetProvider는 활성 프로바이더를 변경합니다.
 func (a *App) SetProvider(provider string) error {
 	switch provider {
-	case gen.ProviderGemini, gen.ProviderOpenRouter, gen.ProviderFal, gen.ProviderBytePlus:
+	case gen.ProviderCodex, gen.ProviderGemini, gen.ProviderOpenRouter, gen.ProviderFal, gen.ProviderBytePlus:
 	default:
 		return fmt.Errorf("지원하지 않는 프로바이더입니다: %s", provider)
 	}

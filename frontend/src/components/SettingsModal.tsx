@@ -27,7 +27,8 @@ interface IProps {
   onSaved: (msg: string, keepOpen?: boolean) => void;
 }
 
-const PROVIDERS: { key: string; label: string; placeholder: string }[] = [
+const PROVIDERS: { key: string; label: string; placeholder: string; keyless?: boolean }[] = [
+  { key: "codex", label: "Codex CLI", placeholder: "", keyless: true },
   { key: "gemini", label: "Gemini", placeholder: "AIza..." },
   { key: "openrouter", label: "OpenRouter", placeholder: "sk-or-..." },
   { key: "fal", label: "fal.ai", placeholder: "key_id:key_secret" },
@@ -47,6 +48,7 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
   const info = settings.providers?.[tab];
   const meta = PROVIDERS.find((p) => p.key === tab)!;
   const isActive = settings.provider === tab;
+  const keyless = !!meta.keyless;
 
   const switchTab = (k: string) => {
     setTab(k);
@@ -132,19 +134,28 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
           </TabsList>
         </Tabs>
 
-        <div className="field">
-          <Label>
-            {t("api_key", { provider: meta.label })} {isActive && <em className="not-italic text-primary">{t("in_use")}</em>}
-          </Label>
-          <Input
-            type="password"
-            placeholder={info?.hasKey ? t("saved_as", { preview: info.keyPreview }) : meta.placeholder}
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && saveKey()}
-            autoFocus
-          />
-        </div>
+        {keyless ? (
+          <div className="field">
+            <Label>
+              Codex CLI {isActive && <em className="not-italic text-primary">{t("in_use")}</em>}
+            </Label>
+            <p className="hint">{t("codex_no_key")}</p>
+          </div>
+        ) : (
+          <div className="field">
+            <Label>
+              {t("api_key", { provider: meta.label })} {isActive && <em className="not-italic text-primary">{t("in_use")}</em>}
+            </Label>
+            <Input
+              type="password"
+              placeholder={info?.hasKey ? t("saved_as", { preview: info.keyPreview }) : meta.placeholder}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveKey()}
+              autoFocus
+            />
+          </div>
+        )}
 
         <div className="field">
           <Label>{t("image_model")}</Label>
@@ -204,10 +215,12 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
               {t("use_provider")}
             </Button>
           )}
-          <Button onClick={saveKey} disabled={busy || !key.trim()}>
-            {busy && <Loader2 size={13} className="animate-spin" />}
-            {busy ? t("checking") : t("save_key")}
-          </Button>
+          {!keyless && (
+            <Button onClick={saveKey} disabled={busy || !key.trim()}>
+              {busy && <Loader2 size={13} className="animate-spin" />}
+              {busy ? t("checking") : t("save_key")}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

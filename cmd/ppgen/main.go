@@ -100,7 +100,7 @@ func resolveProvider(opt options) (gen.Provider, string, string, error) {
 	if opt.model != "" {
 		model = opt.model
 	}
-	if key == "" {
+	if key == "" && !gen.IsKeyless(provider) {
 		return nil, "", "", fmt.Errorf("프로바이더 %q에 API 키가 없습니다 (config.json, .env, 환경변수 또는 -key 사용)", provider)
 	}
 	p, err := gen.New(provider, key, model)

@@ -46,6 +46,8 @@ const zh: Record<string, string> = {
   toast_model_saved: "{provider} 模型已保存。",
   toast_provider_active: "已切换为使用 {provider}。",
   language: "语言",
+  help_codex: "使用本地 Codex CLI 的内置图像生成（gpt-image-2）。无需 API 密钥——使用你的 codex 登录会话。请先在终端用 'codex login' 登录。（不使用 PixelLab）",
+  codex_no_key: "无需 API 密钥——使用 codex 登录会话。每张图约需 30–60 秒。",
   help_gemini: "请输入在 Google AI Studio 获取的密钥。",
   help_openrouter: "请输入在 openrouter.ai → Keys 获取的密钥。",
   help_fal: "请输入 fal.ai 控制台获取的密钥。(.env 中的 FAL_KEY 也会自动识别)",

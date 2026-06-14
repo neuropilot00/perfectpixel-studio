@@ -46,6 +46,8 @@ const es: Record<string, string> = {
   toast_model_saved: "Modelo de {provider} guardado.",
   toast_provider_active: "Ahora usando {provider}.",
   language: "Idioma",
+  help_codex: "Usa la generación de imágenes integrada del Codex CLI local (gpt-image-2). No necesita clave API — usa tu sesión de codex. Inicia sesión con 'codex login' en una terminal. (No usa PixelLab)",
+  codex_no_key: "Sin clave API — usa tu sesión de codex. Tarda unos 30–60 s por imagen.",
   help_gemini: "Introduce la clave emitida en Google AI Studio.",
   help_openrouter: "Introduce la clave de openrouter.ai → Keys.",
   help_fal: "Introduce la clave del panel de fal.ai. (FAL_KEY en .env se detecta automáticamente.)",

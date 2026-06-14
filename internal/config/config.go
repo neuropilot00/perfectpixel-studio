@@ -17,7 +17,8 @@ type ProviderCfg struct {
 
 // Settings는 사용자 설정입니다.
 type Settings struct {
-	Provider   string      `json:"provider"` // gemini | openrouter | fal | byteplus
+	Provider   string      `json:"provider"` // codex | gemini | openrouter | fal | byteplus
+	Codex      ProviderCfg `json:"codex"`    // 로컬 Codex CLI (키 불필요, 모델만 저장)
 	Gemini     ProviderCfg `json:"gemini"`
 	OpenRouter ProviderCfg `json:"openrouter"`
 	Fal        ProviderCfg `json:"fal"`
@@ -31,6 +32,8 @@ type Settings struct {
 // Cfg는 프로바이더 이름으로 해당 설정을 반환합니다.
 func (s *Settings) Cfg(provider string) *ProviderCfg {
 	switch provider {
+	case "codex":
+		return &s.Codex
 	case "openrouter":
 		return &s.OpenRouter
 	case "fal":
@@ -102,7 +105,7 @@ func Load() Settings {
 		s.BytePlus.APIKey = firstNonEmpty(env["BYTEPLUS_API_KEY"], env["ARK_API_KEY"])
 	}
 
-	// 활성 프로바이더 자동 선택: 키가 있는 첫 프로바이더
+	// 활성 프로바이더 자동 선택: 키가 있는 첫 프로바이더, 없으면 키 불필요한 Codex CLI
 	if s.Provider == "" {
 		switch {
 		case s.Gemini.APIKey != "":
@@ -114,7 +117,7 @@ func Load() Settings {
 		case s.BytePlus.APIKey != "":
 			s.Provider = "byteplus"
 		default:
-			s.Provider = "gemini"
+			s.Provider = "codex" // API 키가 없으면 로컬 Codex CLI 사용
 		}
 	}
 	return s
