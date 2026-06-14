@@ -39,6 +39,8 @@ export function PickFolder():Promise<string>;
 
 export function PickImage():Promise<string>;
 
+export function PixelizeImage(arg1:main.PixelizeImageArgs):Promise<string>;
+
 export function RevealInFinder(arg1:string):Promise<void>;
 
 export function SaveProviderKey(arg1:string,arg2:string):Promise<void>;

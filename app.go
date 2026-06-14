@@ -283,6 +283,48 @@ func (a *App) PickImage() (string, error) {
 	return pngDataURL(img)
 }
 
+// PixelizeImageArgs는 임의의 입력 이미지를 픽셀아트로 변환하는 요청입니다(AI 불필요).
+type PixelizeImageArgs struct {
+	DataURL  string `json:"dataURL"`  // 입력 이미지 dataURL
+	StyleKey string `json:"styleKey"` // 팔레트 크기 산출용 (pixel/retro16 등)
+	Colors   int    `json:"colors"`   // 팔레트 색 수 직접 지정 (0이면 styleKey/기본값 사용)
+	RemoveBg bool   `json:"removeBg"` // 배경(테두리 단색/크로마키) 제거 여부
+}
+
+// PixelizeImage는 사용자가 고른 이미지를 로컬에서 픽셀아트로 변환합니다(API 키 불필요).
+// 배경 제거 → 공유 팔레트 양자화 → 픽셀 그리드 스냅, 즉 생성 파이프라인의 후처리만 재사용합니다.
+func (a *App) PixelizeImage(args PixelizeImageArgs) (string, error) {
+	raw, err := decodeDataURL(args.DataURL)
+	if err != nil {
+		return "", fmt.Errorf("이미지 오류: %w", err)
+	}
+	img, err := decodeImage(raw)
+	if err != nil {
+		return "", err
+	}
+
+	var nrgba *image.NRGBA
+	if args.RemoveBg {
+		nrgba = sprite.RemoveBackground(img)
+	} else {
+		nrgba = sprite.ToNRGBA(img)
+	}
+
+	// 팔레트 크기 결정: 직접 지정 > 스타일 산출 > 기본 32색
+	n := args.Colors
+	if n <= 0 {
+		n = sprite.PaletteSizeForStyle(args.StyleKey)
+	}
+	if n <= 0 {
+		n = 32
+	}
+	single := []*image.NRGBA{nrgba}
+	sprite.PixelPostProcess(single, n)
+
+	saveGalleryPNG("pixelize-"+galleryStamp(), single[0])
+	return pngDataURL(single[0])
+}
+
 // ---------- 생성 파이프라인 ----------
 
 // GenerateCharacterArgs는 텍스트 → 베이스 캐릭터 생성 요청입니다.

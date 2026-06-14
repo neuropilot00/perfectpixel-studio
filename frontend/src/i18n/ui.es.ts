@@ -54,6 +54,8 @@ const es: Record<string, string> = {
   char_style: "Personaje y estilo",
   upload_image: "Subir imagen",
   ai_generate: "Generar con IA",
+  pixelize_image: "Pixelar esta imagen",
+  pixelizing: "Pixelando…",
   err_image_only: "Solo se admiten archivos de imagen.",
   base_char_alt: "Personaje base",
   replace: "Reemplazar",

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ImagePlus, Loader2, Sparkles } from "lucide-react";
-import { PickImage, GenerateCharacter } from "../../wailsjs/go/main/App";
+import { ImagePlus, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { PickImage, GenerateCharacter, PixelizeImage } from "../../wailsjs/go/main/App";
 import { CharacterDef, STYLE_OPTIONS, CELL_SIZES } from "../types";
 import { useI18n } from "../i18n";
 import { styleLabel } from "../i18n/catalog";
@@ -26,6 +26,7 @@ export default function CharacterPanel({ character, cellSize, busy, onChange, on
   const [mode, setMode] = useState<"upload" | "ai">("upload");
   const [dragOver, setDragOver] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
+  const [pixelBusy, setPixelBusy] = useState(false);
 
   const set = (patch: Partial<CharacterDef>) => onChange({ ...character, ...patch });
 
@@ -46,6 +47,25 @@ export default function CharacterPanel({ character, cellSize, busy, onChange, on
     const reader = new FileReader();
     reader.onload = () => set({ image: String(reader.result) });
     reader.readAsDataURL(file);
+  };
+
+  // 임의의 이미지를 픽셀아트로 변환 (AI 불필요, 로컬 처리)
+  const pixelize = async () => {
+    if (!character.image || pixelBusy) return;
+    setPixelBusy(true);
+    try {
+      const out = await PixelizeImage({
+        dataURL: character.image,
+        styleKey: character.styleKey,
+        colors: 0,
+        removeBg: true,
+      } as any);
+      if (out) set({ image: out });
+    } catch (e) {
+      onError(String(e));
+    } finally {
+      setPixelBusy(false);
+    }
   };
 
   const generateBase = async () => {
@@ -121,6 +141,13 @@ export default function CharacterPanel({ character, cellSize, busy, onChange, on
           </>
         )}
       </div>
+
+      {character.image && (
+        <Button variant="outline" onClick={pixelize} disabled={pixelBusy || busy}>
+          {pixelBusy ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+          {pixelBusy ? t("pixelizing") : t("pixelize_image")}
+        </Button>
+      )}
 
       <div className="field">
         <Label>{t("char_name")}</Label>

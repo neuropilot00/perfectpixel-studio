@@ -133,6 +133,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class PixelizeImageArgs {
+	    dataURL: string;
+	    styleKey: string;
+	    colors: number;
+	    removeBg: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PixelizeImageArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dataURL = source["dataURL"];
+	        this.styleKey = source["styleKey"];
+	        this.colors = source["colors"];
+	        this.removeBg = source["removeBg"];
+	    }
+	}
 	export class ProviderInfo {
 	    hasKey: boolean;
 	    keyPreview: string;

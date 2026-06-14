@@ -54,6 +54,8 @@ const ko: Record<string, string> = {
   char_style: "캐릭터 & 스타일",
   upload_image: "이미지 업로드",
   ai_generate: "AI로 생성",
+  pixelize_image: "이 이미지를 픽셀아트로 변환",
+  pixelizing: "픽셀화 중…",
   err_image_only: "이미지 파일만 사용할 수 있습니다.",
   base_char_alt: "베이스 캐릭터",
   replace: "교체",

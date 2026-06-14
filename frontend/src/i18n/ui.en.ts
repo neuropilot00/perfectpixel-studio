@@ -54,6 +54,8 @@ const en: Record<string, string> = {
   char_style: "Character & Style",
   upload_image: "Upload image",
   ai_generate: "Generate with AI",
+  pixelize_image: "Pixelize this image",
+  pixelizing: "Pixelizing…",
   err_image_only: "Only image files are supported.",
   base_char_alt: "Base character",
   replace: "Replace",

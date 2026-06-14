@@ -54,6 +54,8 @@ const zh: Record<string, string> = {
   char_style: "角色与风格",
   upload_image: "上传图片",
   ai_generate: "用 AI 生成",
+  pixelize_image: "将此图片像素化",
+  pixelizing: "像素化中…",
   err_image_only: "仅支持图片文件。",
   base_char_alt: "基础角色",
   replace: "替换",
