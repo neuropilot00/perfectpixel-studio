@@ -10,6 +10,10 @@ export function ChatPlan(arg1, arg2) {
   return window['go']['main']['App']['ChatPlan'](arg1, arg2);
 }
 
+export function ClaudeStatus() {
+  return window['go']['main']['App']['ClaudeStatus']();
+}
+
 export function ClearSession() {
   return window['go']['main']['App']['ClearSession']();
 }
@@ -96,6 +100,10 @@ export function PixelizeImage(arg1) {
 
 export function RevealInFinder(arg1) {
   return window['go']['main']['App']['RevealInFinder'](arg1);
+}
+
+export function SaveClaudeToken(arg1) {
+  return window['go']['main']['App']['SaveClaudeToken'](arg1);
 }
 
 export function SaveProviderKey(arg1, arg2) {

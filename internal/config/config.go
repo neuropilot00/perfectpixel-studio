@@ -19,6 +19,7 @@ type ProviderCfg struct {
 type Settings struct {
 	Provider   string      `json:"provider"` // codex | gemini | openrouter | fal | byteplus
 	Codex      ProviderCfg `json:"codex"`    // 로컬 Codex CLI (키 불필요, 모델만 저장)
+	ClaudeToken string     `json:"claudeToken"` // AI 챗봇 기획자용 Claude 구독 토큰(claude setup-token)
 	Gemini     ProviderCfg `json:"gemini"`
 	OpenRouter ProviderCfg `json:"openrouter"`
 	Fal        ProviderCfg `json:"fal"`

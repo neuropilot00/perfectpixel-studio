@@ -7,6 +7,8 @@ export function CancelGeneration():Promise<void>;
 
 export function ChatPlan(arg1:string,arg2:string):Promise<main.ChatPlanResult>;
 
+export function ClaudeStatus():Promise<main.ClaudeAuthInfo>;
+
 export function ClearSession():Promise<void>;
 
 export function CodexLogin():Promise<main.CodexAuthInfo>;
@@ -50,6 +52,8 @@ export function PickImage():Promise<string>;
 export function PixelizeImage(arg1:main.PixelizeImageArgs):Promise<string>;
 
 export function RevealInFinder(arg1:string):Promise<void>;
+
+export function SaveClaudeToken(arg1:string):Promise<void>;
 
 export function SaveProviderKey(arg1:string,arg2:string):Promise<void>;
 

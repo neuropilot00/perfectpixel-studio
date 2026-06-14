@@ -239,6 +239,41 @@ func (a *App) CodexLogin() (CodexAuthInfo, error) {
 	return info, nil
 }
 
+// ---------- Claude CLI 인증 (AI 챗봇 기획자용) ----------
+
+// ClaudeAuthInfo는 Claude CLI 설치 및 인증 상태입니다.
+type ClaudeAuthInfo struct {
+	Installed  bool   `json:"installed"`
+	HasToken   bool   `json:"hasToken"`   // 설정에 구독 토큰 저장됨
+	TokenPrev  string `json:"tokenPrev"`
+	BinPath    string `json:"binPath"`
+}
+
+// ClaudeStatus는 claude CLI 설치 여부와 저장된 구독 토큰 유무를 반환합니다.
+func (a *App) ClaudeStatus() ClaudeAuthInfo {
+	bin := gen.FindBin("claude")
+	info := ClaudeAuthInfo{BinPath: bin}
+	if bin != "claude" {
+		info.Installed = true
+	} else if _, err := exec.LookPath("claude"); err == nil {
+		info.Installed = true
+	}
+	tok := strings.TrimSpace(config.Load().ClaudeToken)
+	if tok != "" {
+		info.HasToken = true
+		info.TokenPrev = keyPreview(tok)
+	}
+	return info
+}
+
+// SaveClaudeToken은 `claude setup-token`으로 발급한 구독 토큰을 저장합니다(이미지 검증 없음).
+func (a *App) SaveClaudeToken(token string) error {
+	token = strings.TrimSpace(token)
+	s := config.Load()
+	s.ClaudeToken = token // 빈 값이면 토큰 제거
+	return config.Save(s)
+}
+
 // ---------- 내장 AI 챗봇 (에셋 기획자) ----------
 
 // AssetPlan은 챗봇이 만들 에셋 1건의 계획입니다.
@@ -298,7 +333,11 @@ func (a *App) ChatPlan(history, message string) (ChatPlanResult, error) {
 		ctx, cancel := context.WithTimeout(a.ctx, 90*time.Second)
 		cmd := exec.CommandContext(ctx, claude, "-p", prompt)
 		cmd.Stdin = nil
-		cmd.Env = gen.SanitizedAuthEnv() // 구독 OAuth 인증을 깨는 ANTHROPIC_*/CLAUDE_CODE_* 변수 제거
+		env := gen.SanitizedAuthEnv() // 구독 OAuth 인증을 깨는 ANTHROPIC_*/CLAUDE_CODE_* 변수 제거
+		if tok := strings.TrimSpace(config.Load().ClaudeToken); tok != "" {
+			env = append(env, "CLAUDE_CODE_OAUTH_TOKEN="+tok) // 설정에 저장된 구독 토큰 사용
+		}
+		cmd.Env = env
 		out, err := cmd.CombinedOutput()
 		cancel()
 		if err == nil {
@@ -620,8 +659,8 @@ type StateResult struct {
 func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 	res := StateResult{Name: args.State.Name, Expected: args.State.Frames}
 
-	if args.State.Frames < 1 || args.State.Frames > 10 {
-		return res, errors.New("프레임 수는 1~10 사이여야 합니다")
+	if args.State.Frames < 1 || args.State.Frames > 16 {
+		return res, errors.New("프레임 수는 1~16 사이여야 합니다")
 	}
 	baseRaw, err := decodeDataURL(args.BaseImage)
 	if err != nil {

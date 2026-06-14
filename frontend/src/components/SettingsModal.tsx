@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { SaveProviderKey, SaveProviderModel, SetProvider, CodexStatus, CodexLogin } from "../../wailsjs/go/main/App";
+import { SaveProviderKey, SaveProviderModel, SetProvider, CodexStatus, CodexLogin, ClaudeStatus, SaveClaudeToken } from "../../wailsjs/go/main/App";
 import { useI18n, LANGUAGES, Lang } from "../i18n";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
@@ -27,8 +27,9 @@ interface IProps {
   onSaved: (msg: string, keepOpen?: boolean) => void;
 }
 
-const PROVIDERS: { key: string; label: string; placeholder: string; keyless?: boolean }[] = [
+const PROVIDERS: { key: string; label: string; placeholder: string; keyless?: boolean; planner?: boolean }[] = [
   { key: "codex", label: "Codex CLI", placeholder: "", keyless: true },
+  { key: "claude", label: "Claude (챗봇)", placeholder: "sk-ant-oat...", planner: true },
   { key: "gemini", label: "Gemini", placeholder: "AIza..." },
   { key: "openrouter", label: "OpenRouter", placeholder: "sk-or-..." },
   { key: "fal", label: "fal.ai", placeholder: "key_id:key_secret" },
@@ -46,6 +47,32 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
   const [error, setError] = useState("");
   const [codexAuth, setCodexAuth] = useState<{ installed: boolean; loggedIn: boolean; detail: string } | null>(null);
   const [codexBusy, setCodexBusy] = useState(false);
+  const [claudeAuth, setClaudeAuth] = useState<{ installed: boolean; hasToken: boolean; tokenPrev: string } | null>(null);
+  const [claudeToken, setClaudeToken] = useState("");
+
+  const refreshClaude = async () => {
+    try {
+      setClaudeAuth((await ClaudeStatus()) as any);
+    } catch {
+      /* 무시 */
+    }
+  };
+
+  const saveClaude = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await SaveClaudeToken(claudeToken.trim());
+      setClaudeToken("");
+      await refreshClaude();
+      onSaved(t("toast_key_saved", { provider: "Claude" }), true);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const refreshCodex = async () => {
     try {
@@ -57,6 +84,7 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
 
   useEffect(() => {
     if (tab === "codex") refreshCodex();
+    if (tab === "claude") refreshClaude();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -78,6 +106,7 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
   const meta = PROVIDERS.find((p) => p.key === tab)!;
   const isActive = settings.provider === tab;
   const keyless = !!meta.keyless;
+  const isPlanner = !!meta.planner;
 
   const switchTab = (k: string) => {
     setTab(k);
@@ -163,7 +192,44 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
           </TabsList>
         </Tabs>
 
-        {keyless ? (
+        {isPlanner ? (
+          <div className="field">
+            <Label>Claude — {t("ai_planner")}</Label>
+            <p className="hint">{t("claude_planner_note")}</p>
+            <div className="row" style={{ alignItems: "center", gap: 8 }}>
+              <span>
+                {claudeAuth == null
+                  ? "…"
+                  : !claudeAuth.installed
+                    ? `⚠️ ${t("claude_not_installed")}`
+                    : claudeAuth.hasToken
+                      ? `✅ ${t("claude_token_saved", { preview: claudeAuth.tokenPrev })}`
+                      : `🔒 ${t("claude_no_token")}`}
+              </span>
+              <Button variant="ghost" size="sm" onClick={refreshClaude} disabled={busy}>
+                {t("codex_refresh")}
+              </Button>
+            </div>
+            <p className="hint">{t("claude_setup_hint")}</p>
+            <Input
+              type="password"
+              placeholder={meta.placeholder}
+              value={claudeToken}
+              onChange={(e) => setClaudeToken(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && claudeToken.trim() && saveClaude()}
+            />
+            <div className="row justify-end" style={{ marginTop: 6 }}>
+              {claudeAuth?.hasToken && (
+                <Button variant="ghost" size="sm" onClick={() => { setClaudeToken(""); SaveClaudeToken("").then(refreshClaude); }} disabled={busy}>
+                  {t("claude_clear")}
+                </Button>
+              )}
+              <Button size="sm" onClick={saveClaude} disabled={busy || !claudeToken.trim()}>
+                {busy && <Loader2 size={13} className="animate-spin" />} {t("save_key")}
+              </Button>
+            </div>
+          </div>
+        ) : keyless ? (
           <div className="field">
             <Label>
               Codex CLI {isActive && <em className="not-italic text-primary">{t("in_use")}</em>}
@@ -206,6 +272,7 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
           </div>
         )}
 
+        {!isPlanner && (
         <div className="field">
           <Label>{t("image_model")}</Label>
           {(info?.models?.length ?? 0) > 0 && (
@@ -245,6 +312,7 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
             </Button>
           </div>
         </div>
+        )}
 
         <p className="hint">
           {t(`help_${tab}`)}
@@ -264,7 +332,7 @@ export default function SettingsModal({ settings, onClose, onSaved }: IProps) {
               {t("use_provider")}
             </Button>
           )}
-          {!keyless && (
+          {!keyless && !isPlanner && (
             <Button onClick={saveKey} disabled={busy || !key.trim()}>
               {busy && <Loader2 size={13} className="animate-spin" />}
               {busy ? t("checking") : t("save_key")}

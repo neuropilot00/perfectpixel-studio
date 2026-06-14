@@ -52,6 +52,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class ClaudeAuthInfo {
+	    installed: boolean;
+	    hasToken: boolean;
+	    tokenPrev: string;
+	    binPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClaudeAuthInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.hasToken = source["hasToken"];
+	        this.tokenPrev = source["tokenPrev"];
+	        this.binPath = source["binPath"];
+	    }
+	}
 	export class CodexAuthInfo {
 	    installed: boolean;
 	    loggedIn: boolean;

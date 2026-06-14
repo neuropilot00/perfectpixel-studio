@@ -165,9 +165,9 @@ export default function StatesPanel({
                         type="number"
                         className="h-7"
                         min={1}
-                        max={10}
+                        max={16}
                         value={s.frames}
-                        onChange={(e) => update(s.id, { frames: Math.max(1, Math.min(10, Number(e.target.value) || 1)) })}
+                        onChange={(e) => update(s.id, { frames: Math.max(1, Math.min(16, Number(e.target.value) || 1)) })}
                       />
                     </div>
                     <div className="mini-field">
