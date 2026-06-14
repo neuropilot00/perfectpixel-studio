@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Images, Package, Palette, Plus, Settings, Users, Wand2, X } from "lucide-react";
-import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession } from "../wailsjs/go/main/App";
+import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession, CodexStatus } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import CharacterPanel from "./components/CharacterPanel";
 import GalleryModal from "./components/GalleryModal";
@@ -60,6 +60,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [toasts, setToasts] = useState<IToast[]>([]);
+  const [notReady, setNotReady] = useState(""); // "" = 준비됨, "codex_login" | "no_provider"
+  const [hideOnboard, setHideOnboard] = useState(false);
 
   // 최신 상태 참조 (비동기 루프에서 사용)
   const statesRef = useRef(states);
@@ -159,7 +161,20 @@ export default function App() {
     try {
       const s = (await GetSettings()) as unknown as ISettings;
       setSettings(s);
-      if (!hasActiveKey(s)) setShowSettings(true);
+      // 실제로 생성 가능한 상태인지 점검 (codex는 키리스라 "준비됨"으로 떠도 로그인이 안 됐을 수 있음)
+      let nr = "";
+      if (!hasActiveKey(s)) {
+        nr = "no_provider";
+      } else if (s.provider === "codex") {
+        try {
+          const cs: any = await CodexStatus();
+          if (!cs?.loggedIn) nr = "codex_login";
+        } catch {
+          /* 상태 확인 실패는 무시 */
+        }
+      }
+      setNotReady(nr);
+      if (nr === "no_provider") setShowSettings(true);
       return s;
     } catch {
       return null;
@@ -578,6 +593,21 @@ export default function App() {
           </Button>
         </div>
       </header>
+
+      {notReady && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 10px 8px", padding: "10px 14px", borderRadius: 10, background: "hsl(var(--destructive)/0.12)", border: "1px solid hsl(var(--destructive)/0.4)", fontSize: 14 }}>
+          <span style={{ flex: 1 }}>⚠️ {notReady === "codex_login" ? t("ready_codex_login") : t("ready_no_provider")}</span>
+          <Button size="sm" onClick={() => setShowSettings(true)}>{t("open_settings")}</Button>
+        </div>
+      )}
+
+      {!notReady && !hideOnboard && !character.image && states.length === 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 10px 8px", padding: "10px 14px", borderRadius: 10, background: "hsl(var(--primary)/0.10)", border: "1px solid hsl(var(--primary)/0.35)", fontSize: 14 }}>
+          <span style={{ flex: 1 }}>👋 {t("onboard_steps")}</span>
+          <Button size="sm" onClick={() => setShowChat(true)}>🤖 {t("onboard_ai")}</Button>
+          <Button variant="ghost" size="sm" onClick={() => setHideOnboard(true)} title={t("close")}><X size={12} /></Button>
+        </div>
+      )}
 
       <main className="workspace">
         <section className="panel panel-char">
