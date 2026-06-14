@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Images, Package, Palette, Plus, Settings, Users, Wand2, X } from "lucide-react";
+import { Bot, HelpCircle, Images, Package, Palette, Plus, Settings, Users, Wand2, X } from "lucide-react";
 import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession, CodexStatus } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import CharacterPanel from "./components/CharacterPanel";
@@ -11,6 +11,7 @@ import AssetStudioModal from "./components/AssetStudioModal";
 import ChatModal from "./components/ChatModal";
 import VariantsModal from "./components/VariantsModal";
 import EditModal from "./components/EditModal";
+import HelpModal from "./components/HelpModal";
 import { Button } from "./components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./components/ui/dialog";
 import { CharacterDef, DirectionInfo, FALLBACK_PRESETS, FrameItem, PresetInfo, StateDef, selectedFrames, uid } from "./types";
@@ -44,6 +45,7 @@ export default function App() {
   const [showChat, setShowChat] = useState(false);
   const [showVariants, setShowVariants] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [character, setCharacter] = useState<CharacterDef>({
     image: null,
@@ -575,11 +577,15 @@ export default function App() {
           <Button variant="ghost" size="sm" onClick={() => setShowAssets(true)} title={t("asset_studio_tip")}>
             <Palette size={13} /> {t("asset_studio")}
           </Button>
+          <span style={{ width: 1, height: 20, background: "hsl(var(--border))", margin: "0 2px" }} />
           <Button variant="ghost" size="sm" onClick={() => setShowGallery(true)} title={t("gallery_tip")}>
             <Images size={13} /> {t("gallery")}
           </Button>
           <Button size="sm" disabled={!exportable} onClick={handleExport} title={t("export_tip")}>
             <Package size={13} /> {t("export")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowHelp(true)} title={t("help_title")}>
+            <HelpCircle size={13} />
           </Button>
           <Button
             variant="ghost"
@@ -677,6 +683,8 @@ export default function App() {
       {showVariants && <VariantsModal baseImage={character.image} onClose={() => setShowVariants(false)} onToast={toast} onUse={useAsCharacter} />}
 
       {showEdit && <EditModal baseImage={character.image} onClose={() => setShowEdit(false)} onToast={toast} onUse={useAsCharacter} />}
+
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
 
       <Dialog open={confirmNew} onOpenChange={(o) => !o && setConfirmNew(false)}>
         <DialogContent className="w-[380px]">

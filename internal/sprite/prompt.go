@@ -187,10 +187,19 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 		fmt.Fprintf(&b, "Choreography: %s\n", hint)
 	}
 	fmt.Fprintf(&b, "Treat the %d poses as evenly timed beats of one continuous motion — pose k is phase k of %d, and neighbours read as smooth in-betweens, never unrelated stances.\n", n, n)
+
+	// 보편 애니메이션 원칙 — 모든 동작이 자연스럽게 읽히도록 (12원칙 요약)
+	b.WriteString("Animation craft (make the motion read naturally, apply to every pose):\n")
+	b.WriteString("- Anticipation: before the main action, a small opposite wind-up (load before a throw, dip before a jump).\n")
+	b.WriteString("- Clear key pose: one frame holds the most extreme, readable pose of the action; the others build toward and away from it.\n")
+	b.WriteString("- Follow-through & overlapping action: loose parts (hair, cloth, tail, weapon) lag and trail the body, settling a beat later, not frozen stiff.\n")
+	b.WriteString("- Weight & balance: shift the center of mass and counter-pose the body so it never looks weightless or sliding; feet plant believably.\n")
+	b.WriteString("- Arcs: limbs and the body travel along curved arcs between poses, not straight robotic lines.\n")
+	b.WriteString("- Ease & spacing: cluster poses tighter at the slow start/end and spread them wider through the fast middle, so speed is felt.\n")
 	if spec.Loop {
-		b.WriteString("It loops: the final pose must hand off cleanly into the first.\n\n")
+		b.WriteString("It loops: the final pose must hand off cleanly into the first with no jump or hitch — frame 1 is the natural in-between after the last frame.\n\n")
 	} else {
-		b.WriteString("It plays once: give it a clear start, peak, and settle.\n\n")
+		b.WriteString("It plays once: give it a clear anticipation, a peak, and a settle that comes to rest.\n\n")
 	}
 
 	b.WriteString("Row layout:\n")
