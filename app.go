@@ -297,7 +297,8 @@ func (a *App) ChatPlan(history, message string) (ChatPlanResult, error) {
 	if claude := gen.FindBin("claude"); claude != "claude" {
 		ctx, cancel := context.WithTimeout(a.ctx, 90*time.Second)
 		cmd := exec.CommandContext(ctx, claude, "-p", prompt)
-		cmd.Env = gen.AugmentedEnv()
+		cmd.Stdin = nil
+		cmd.Env = gen.SanitizedAuthEnv() // 구독 OAuth 인증을 깨는 ANTHROPIC_*/CLAUDE_CODE_* 변수 제거
 		out, err := cmd.CombinedOutput()
 		cancel()
 		if err == nil {

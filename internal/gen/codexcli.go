@@ -63,6 +63,32 @@ func CodexBinPath() string {
 	return FindBin("codex")
 }
 
+// authBreakers는 자식 claude의 구독 OAuth 인증을 가로채/깨뜨릴 수 있는 환경변수들입니다.
+// (부모 Claude Code 세션에서 상속되면 401/오인증을 유발. CLAUDE_CODE_OAUTH_TOKEN은 유지해야 함.)
+var authBreakers = map[string]bool{
+	"ANTHROPIC_API_KEY": true, "ANTHROPIC_AUTH_TOKEN": true, "ANTHROPIC_BASE_URL": true,
+	"CLAUDE_CODE_USE_BEDROCK": true, "CLAUDE_CODE_USE_VERTEX": true, "CLAUDE_CODE_USE_FOUNDRY": true,
+	"CLAUDECODE": true, "CLAUDE_CODE_ENTRYPOINT": true, "CLAUDE_CODE_SESSION_ID": true,
+	"CLAUDE_CODE_SDK_HAS_OAUTH_REFRESH": true, "CLAUDE_CODE_SDK_HAS_HOST_AUTH_REFRESH": true,
+	"CLAUDE_CODE_OAUTH_SCOPES": true, "CLAUDE_AGENT_SDK_VERSION": true, "AI_AGENT": true,
+	"CLAUDE_CODE_EXECPATH": true, "CLAUDE_PLUGIN_DATA": true,
+}
+
+// SanitizedAuthEnv는 AugmentedEnv에서 claude 구독 인증을 깨뜨리는 변수를 제거합니다.
+// 앱이 자식 claude를 부를 때 사용 — 사용자의 구독 OAuth(키체인/CLAUDE_CODE_OAUTH_TOKEN)로 인증되게 합니다.
+func SanitizedAuthEnv() []string {
+	src := AugmentedEnv()
+	out := make([]string, 0, len(src))
+	for _, kv := range src {
+		eq := strings.IndexByte(kv, '=')
+		if eq > 0 && authBreakers[kv[:eq]] {
+			continue
+		}
+		out = append(out, kv)
+	}
+	return out
+}
+
 // AugmentedEnv는 자식 프로세스(codex)가 node 등 의존 도구를 찾을 수 있도록 PATH를 보강합니다.
 func AugmentedEnv() []string {
 	env := os.Environ()
