@@ -667,7 +667,7 @@ export default function App() {
       )}
 
       {showGallery && (
-        <GalleryModal onClose={() => setShowGallery(false)} onError={(m) => toast("error", m)} />
+        <GalleryModal onClose={() => setShowGallery(false)} onError={(m) => toast("error", m)} onUse={useAsCharacter} />
       )}
 
       {showAssets && <AssetStudioModal onClose={() => setShowAssets(false)} onToast={toast} />}

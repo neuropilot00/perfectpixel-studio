@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, FolderOpen, Images, Loader2, RefreshCw, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, Images, Loader2, RefreshCw, Trash2, UserPlus, X } from "lucide-react";
 import {
   DeleteGalleryImage,
   GetGalleryPath,
@@ -25,6 +25,7 @@ export interface IGalleryImage {
 interface IProps {
   onClose: () => void;
   onError: (msg: string) => void;
+  onUse?: (image: string, name?: string) => void; // 이 이미지를 작업 캐릭터로 불러오기
 }
 
 function formatSize(n: number): string {
@@ -75,7 +76,7 @@ function Thumb({ item, onClick }: { item: IGalleryImage; onClick: () => void }) 
 }
 
 // 갤러리 모달: 생성 이미지 갤러리 + 내 컴퓨터 이미지 뷰어
-export default function GalleryModal({ onClose, onError }: IProps) {
+export default function GalleryModal({ onClose, onError, onUse }: IProps) {
   const { t } = useI18n();
   const [tab, setTab] = useState<"gallery" | "local">("gallery");
   const [galleryItems, setGalleryItems] = useState<IGalleryImage[]>([]);
@@ -283,6 +284,11 @@ export default function GalleryModal({ onClose, onError }: IProps) {
               <span className="gal-viewer-meta">
                 {viewIdx! + 1} / {items.length} · {formatSize(current.size)}
               </span>
+              {onUse && viewSrc && (
+                <Button variant="outline" size="sm" onClick={() => { onUse(viewSrc, current.name); onClose(); }} title={t("use_char_btn")}>
+                  <UserPlus size={13} /> {t("use_char_btn")}
+                </Button>
+              )}
               {tab === "gallery" && (
                 <Button variant="ghost" size="sm" className="text-white/80 hover:bg-white/10 hover:text-white" onClick={deleteCurrent} title={t("delete")}>
                   <Trash2 size={13} />
