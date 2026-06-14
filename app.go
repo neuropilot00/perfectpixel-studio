@@ -632,6 +632,75 @@ func (a *App) GenerateAsset(args GenerateAssetArgs) (string, error) {
 	return pngDataURL(out)
 }
 
+// GenerateEditArgs는 기존 이미지를 부분 편집(인페인팅)하는 요청입니다.
+type GenerateEditArgs struct {
+	Image       string `json:"image"`       // 편집할 원본 dataURL
+	Instruction string `json:"instruction"` // 편집 지시 (예: "빨간 망토 추가")
+	StyleKey    string `json:"styleKey"`
+	StyleCustom string `json:"styleCustom"`
+	Transparent bool   `json:"transparent"` // true=캐릭터/아이템(투명), false=배경/타일(불투명)
+}
+
+// GenerateEdit는 첨부 이미지에 지시한 변경만 적용한 새 이미지를 생성합니다.
+func (a *App) GenerateEdit(args GenerateEditArgs) (string, error) {
+	if strings.TrimSpace(args.Instruction) == "" {
+		return "", errors.New("편집 지시를 입력해 주세요")
+	}
+	srcRaw, err := decodeDataURL(args.Image)
+	if err != nil {
+		return "", fmt.Errorf("이미지 오류: %w", err)
+	}
+	srcImg, err := decodeImage(srcRaw)
+	if err != nil {
+		return "", err
+	}
+	var srcBuf bytes.Buffer
+	if err := png.Encode(&srcBuf, srcImg); err != nil {
+		return "", err
+	}
+
+	style := sprite.ResolveStyle(args.StyleKey, args.StyleCustom)
+	prompt := sprite.BuildEditPrompt(args.Instruction, style, args.Transparent)
+
+	p, err := a.provider()
+	if err != nil {
+		return "", err
+	}
+	defer a.emit("progress", map[string]any{"phase": "idle", "message": ""})
+	a.emit("progress", map[string]any{"phase": "edit", "message": "이미지 편집 중..."})
+	genCtx, releaseGen := a.genContext()
+	defer releaseGen()
+
+	raw, err := p.GenerateImage(genCtx, prompt, [][]byte{srcBuf.Bytes()}, "1:1")
+	if err != nil {
+		return "", friendlyErr(err)
+	}
+	img, err := decodeImage(raw)
+	if err != nil {
+		return "", err
+	}
+	var out image.Image
+	if args.Transparent {
+		clean := sprite.RemoveBackground(img)
+		if n := sprite.PaletteSizeForStyle(args.StyleKey); n > 0 {
+			single := []*image.NRGBA{clean}
+			sprite.PixelPostProcess(single, n)
+			clean = single[0]
+		}
+		out = clean
+	} else {
+		nr := sprite.ToNRGBA(img)
+		if n := sprite.PaletteSizeForStyle(args.StyleKey); n > 0 {
+			single := []*image.NRGBA{nr}
+			sprite.PixelPostProcess(single, n)
+			nr = single[0]
+		}
+		out = nr
+	}
+	saveGalleryPNG("edit-"+galleryStamp(), out)
+	return pngDataURL(out)
+}
+
 // GenerateCharacterRefArgs는 레퍼런스 이미지 화풍으로 새 캐릭터를 만드는 요청입니다.
 type GenerateCharacterRefArgs struct {
 	ReferenceImage string `json:"referenceImage"` // 화풍 레퍼런스 dataURL

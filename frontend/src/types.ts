@@ -16,6 +16,7 @@ export interface StateDef {
   fps: number;
   loop: boolean;
   action: string;
+  choreography?: string; // 상세 안무 (비우면 백엔드 기본 Hint 사용)
   status: StateStatus;
   error?: string;
   rawStrip?: string;
@@ -69,6 +70,7 @@ export interface PresetInfo {
   frames: number;
   fps: number;
   loop: boolean;
+  hint?: string; // 상세 안무 (백엔드 노출)
 }
 
 export const STATE_PRESETS: StatePreset[] = [
@@ -124,6 +126,7 @@ export function presetInfoToState(p: PresetInfo): StateDef {
     fps: p.fps,
     loop: p.loop,
     action: p.action,
+    choreography: p.hint ?? "",
     status: "idle",
     items: [],
     warnings: [],

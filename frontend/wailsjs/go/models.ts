@@ -211,6 +211,26 @@ export namespace main {
 	        this.styleCustom = source["styleCustom"];
 	    }
 	}
+	export class GenerateEditArgs {
+	    image: string;
+	    instruction: string;
+	    styleKey: string;
+	    styleCustom: string;
+	    transparent: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new GenerateEditArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.image = source["image"];
+	        this.instruction = source["instruction"];
+	        this.styleKey = source["styleKey"];
+	        this.styleCustom = source["styleCustom"];
+	        this.transparent = source["transparent"];
+	    }
+	}
 	export class GenerateStateArgs {
 	    baseImage: string;
 	    description: string;
@@ -382,6 +402,7 @@ export namespace sprite {
 	    frames: number;
 	    fps: number;
 	    loop: boolean;
+	    hint: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new PresetInfo(source);
@@ -396,6 +417,7 @@ export namespace sprite {
 	        this.frames = source["frames"];
 	        this.fps = source["fps"];
 	        this.loop = source["loop"];
+	        this.hint = source["hint"];
 	    }
 	}
 	export class StateSpec {
@@ -404,6 +426,7 @@ export namespace sprite {
 	    fps: number;
 	    loop: boolean;
 	    action: string;
+	    choreography: string;
 	    facing: string;
 	
 	    static createFrom(source: any = {}) {
@@ -417,6 +440,7 @@ export namespace sprite {
 	        this.fps = source["fps"];
 	        this.loop = source["loop"];
 	        this.action = source["action"];
+	        this.choreography = source["choreography"];
 	        this.facing = source["facing"];
 	    }
 	}

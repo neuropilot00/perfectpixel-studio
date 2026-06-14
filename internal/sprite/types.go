@@ -9,8 +9,9 @@ type StateSpec struct {
 	Frames int    `json:"frames"`
 	FPS    int    `json:"fps"`
 	Loop   bool   `json:"loop"`
-	Action string `json:"action"`
-	Facing string `json:"facing"` // 8방향 키 (south 등, 빈 값이면 방향 지시 없음)
+	Action       string `json:"action"`
+	Choreography string `json:"choreography"` // 상세 안무(비우면 프리셋 기본 Hint 사용)
+	Facing       string `json:"facing"`       // 8방향 키 (south 등, 빈 값이면 방향 지시 없음)
 }
 
 // ExtractResult는 스트립에서 프레임을 추출한 결과입니다.

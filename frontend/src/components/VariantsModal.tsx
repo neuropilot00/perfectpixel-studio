@@ -14,6 +14,7 @@ interface IProps {
   baseImage: string | null; // 현재 작업 중인 베이스 캐릭터(있으면 레퍼런스 후보)
   onClose: () => void;
   onToast: (kind: "info" | "error" | "success", text: string) => void;
+  onUse: (image: string, name?: string) => void; // 이 캐릭터로 작업(메인 파이프라인 로드)
 }
 
 interface Variant {
@@ -25,7 +26,7 @@ interface Variant {
 }
 
 // 레퍼런스 기반 일괄 캐릭터 생성: 1개 화풍 레퍼런스 → 여러 캐릭터를 같은 스타일로 생성
-export default function VariantsModal({ baseImage, onClose, onToast }: IProps) {
+export default function VariantsModal({ baseImage, onClose, onToast, onUse }: IProps) {
   const { t, lang } = useI18n();
   const [ref, setRef] = useState<string | null>(baseImage);
   const [descs, setDescs] = useState("");
@@ -130,6 +131,9 @@ export default function VariantsModal({ baseImage, onClose, onToast }: IProps) {
                     <img src={v.image} alt={v.desc} className="pixelated" style={{ maxWidth: "100%", maxHeight: 130, objectFit: "contain" }} />
                     <Button variant="ghost" size="sm" style={{ position: "absolute", top: 2, right: 2 }} title={t("regenerate")} onClick={() => genOne(v)} disabled={busy}>
                       <RefreshCw size={12} />
+                    </Button>
+                    <Button variant="outline" size="sm" style={{ width: "100%", marginTop: 4 }} onClick={() => onUse(v.image!, v.desc)} disabled={busy}>
+                      {t("use_char_btn")}
                     </Button>
                   </>
                 )}

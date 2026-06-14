@@ -25,6 +25,8 @@ export function GenerateCharacter(arg1:main.GenerateCharacterArgs):Promise<strin
 
 export function GenerateCharacterRef(arg1:main.GenerateCharacterRefArgs):Promise<string>;
 
+export function GenerateEdit(arg1:main.GenerateEditArgs):Promise<string>;
+
 export function GenerateState(arg1:main.GenerateStateArgs):Promise<main.StateResult>;
 
 export function GetGalleryPath():Promise<string>;

@@ -9,6 +9,7 @@ import { Textarea } from "./ui/textarea";
 
 interface IProps {
   onClose: () => void;
+  onUse: (image: string, name?: string) => void;
 }
 
 interface Msg {
@@ -20,7 +21,7 @@ interface Msg {
 }
 
 // 내장 AI 챗봇: 자연어 요청 → (Claude 또는 Codex가) 계획 → codex로 에셋 생성
-export default function ChatModal({ onClose }: IProps) {
+export default function ChatModal({ onClose, onUse }: IProps) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<Msg[]>([
     { id: uid("m"), role: "assistant", text: t("ai_greeting") },
@@ -111,7 +112,12 @@ export default function ChatModal({ onClose }: IProps) {
               {m.images && m.images.length > 0 && (
                 <div className="checker" style={{ marginTop: 6, borderRadius: 8, padding: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {m.images.map((src, i) => (
-                    <img key={i} src={src} alt="" className="pixelated" style={{ maxWidth: 200, maxHeight: 200, objectFit: "contain" }} />
+                    <div key={i} style={{ textAlign: "center" }}>
+                      <img src={src} alt="" className="pixelated" style={{ maxWidth: 200, maxHeight: 200, objectFit: "contain", display: "block" }} />
+                      <Button variant="outline" size="sm" style={{ marginTop: 4 }} onClick={() => onUse(src)}>
+                        {t("use_char_btn")}
+                      </Button>
+                    </div>
                   ))}
                 </div>
               )}

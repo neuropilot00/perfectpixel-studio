@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Images, Package, Palette, Plus, Settings, Users, X } from "lucide-react";
+import { Bot, Images, Package, Palette, Plus, Settings, Users, Wand2, X } from "lucide-react";
 import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import CharacterPanel from "./components/CharacterPanel";
@@ -10,6 +10,7 @@ import StatesPanel from "./components/StatesPanel";
 import AssetStudioModal from "./components/AssetStudioModal";
 import ChatModal from "./components/ChatModal";
 import VariantsModal from "./components/VariantsModal";
+import EditModal from "./components/EditModal";
 import { Button } from "./components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./components/ui/dialog";
 import { CharacterDef, DirectionInfo, FALLBACK_PRESETS, FrameItem, PresetInfo, StateDef, selectedFrames, uid } from "./types";
@@ -42,6 +43,7 @@ export default function App() {
   const [showAssets, setShowAssets] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showVariants, setShowVariants] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [character, setCharacter] = useState<CharacterDef>({
     image: null,
@@ -164,6 +166,16 @@ export default function App() {
     }
   };
 
+  // 생성한 캐릭터(변형/챗봇)를 메인 작업 캐릭터로 불러오기 → 이후 StatesPanel에서 애니메이션 생성
+  const useAsCharacter = (image: string, name?: string) => {
+    setCharacter((prev) => ({ ...prev, image, ...(name ? { name } : {}) }));
+    setShowVariants(false);
+    setShowChat(false);
+    setShowAssets(false);
+    setShowEdit(false);
+    toast("success", t("use_char_done"));
+  };
+
   const toast = (kind: IToast["kind"], text: string) => {
     const t: IToast = { id: uid("toast"), kind, text };
     setToasts((prev) => [...prev, t]);
@@ -229,7 +241,7 @@ export default function App() {
         safeMargin: 0,
         feedback,
         refStrip,
-        state: { name: st.name, frames: st.frames, fps: st.fps, loop: st.loop, action: st.action, facing: st.facing ?? "" },
+        state: { name: st.name, frames: st.frames, fps: st.fps, loop: st.loop, action: st.action, choreography: st.choreography ?? "", facing: st.facing ?? "" },
       } as any);
 
       const items: FrameItem[] = (res.frames ?? []).map((png: string) => ({
@@ -542,6 +554,9 @@ export default function App() {
           <Button variant="ghost" size="sm" onClick={() => setShowVariants(true)} title={t("variants_tip")}>
             <Users size={13} /> {t("variants_studio")}
           </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowEdit(true)} title={t("edit_tip")}>
+            <Wand2 size={13} /> {t("edit_studio")}
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowAssets(true)} title={t("asset_studio_tip")}>
             <Palette size={13} /> {t("asset_studio")}
           </Button>
@@ -627,9 +642,11 @@ export default function App() {
 
       {showAssets && <AssetStudioModal onClose={() => setShowAssets(false)} onToast={toast} />}
 
-      {showChat && <ChatModal onClose={() => setShowChat(false)} />}
+      {showChat && <ChatModal onClose={() => setShowChat(false)} onUse={useAsCharacter} />}
 
-      {showVariants && <VariantsModal baseImage={character.image} onClose={() => setShowVariants(false)} onToast={toast} />}
+      {showVariants && <VariantsModal baseImage={character.image} onClose={() => setShowVariants(false)} onToast={toast} onUse={useAsCharacter} />}
+
+      {showEdit && <EditModal baseImage={character.image} onClose={() => setShowEdit(false)} onToast={toast} onUse={useAsCharacter} />}
 
       <Dialog open={confirmNew} onOpenChange={(o) => !o && setConfirmNew(false)}>
         <DialogContent className="w-[380px]">

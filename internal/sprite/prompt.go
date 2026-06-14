@@ -75,6 +75,22 @@ func BuildCharacterPrompt(description, style string) string {
 	return b.String()
 }
 
+// BuildEditPrompt는 첨부 이미지를 부분 편집(인페인팅 성격)하는 프롬프트입니다.
+// 원본 이미지는 refImages[0]로 전달되어야 합니다.
+func BuildEditPrompt(instruction, style string, transparent bool) string {
+	var b strings.Builder
+	b.WriteString("Edit the attached image. Apply ONLY this change: ")
+	b.WriteString(strings.TrimSpace(instruction))
+	b.WriteString(".\nKeep EVERYTHING else identical — same subject identity, same pose and composition, same framing, same art style, same color palette and pixel density. Do not redraw, restyle, recolor, or move any unrelated part.\n\n")
+	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
+	if transparent {
+		b.WriteString(canvasContract())
+	} else {
+		b.WriteString("Opaque output: fill every pixel, no transparency. No text, no border, no frame, no watermark.\n")
+	}
+	return b.String()
+}
+
 // BuildCharacterRefPrompt는 레퍼런스 이미지의 화풍을 따라 "다른" 캐릭터를 만드는 프롬프트입니다.
 // 레퍼런스 이미지는 refImages[0]로 함께 전달되어야 합니다.
 func BuildCharacterRefPrompt(description, style string) string {
@@ -163,7 +179,11 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 		action = spec.Name
 	}
 	fmt.Fprintf(&b, "Movement: %s.\n", action)
-	if hint := MotionHint(spec.Name); hint != "" {
+	hint := strings.TrimSpace(spec.Choreography) // 사용자가 편집한 안무 우선
+	if hint == "" {
+		hint = MotionHint(spec.Name)
+	}
+	if hint != "" {
 		fmt.Fprintf(&b, "Choreography: %s\n", hint)
 	}
 	fmt.Fprintf(&b, "Treat the %d poses as evenly timed beats of one continuous motion — pose k is phase k of %d, and neighbours read as smooth in-betweens, never unrelated stances.\n", n, n)

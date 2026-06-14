@@ -46,6 +46,10 @@ export function GenerateCharacterRef(arg1) {
   return window['go']['main']['App']['GenerateCharacterRef'](arg1);
 }
 
+export function GenerateEdit(arg1) {
+  return window['go']['main']['App']['GenerateEdit'](arg1);
+}
+
 export function GenerateState(arg1) {
   return window['go']['main']['App']['GenerateState'](arg1);
 }

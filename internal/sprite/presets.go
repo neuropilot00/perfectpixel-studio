@@ -12,7 +12,7 @@ type PresetInfo struct {
 	Frames   int    `json:"frames"`   // 기본 프레임 수
 	FPS      int    `json:"fps"`      // 기본 재생 속도
 	Loop     bool   `json:"loop"`     // 기본 반복 여부
-	Hint     string `json:"-"`        // 모션 가이드 (프롬프트 주입용, 노출 안 함)
+	Hint     string `json:"hint"`     // 모션 가이드 (프롬프트 주입용 + UI에서 편집 가능하도록 노출)
 }
 
 // Presets는 선택 가능한 100개 상황 키워드 카탈로그입니다.

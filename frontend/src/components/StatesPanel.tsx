@@ -206,6 +206,18 @@ export default function StatesPanel({
                       />
                     </div>
                   )}
+                  {!s.mirrorOf && (
+                    <div className="mini-field" style={{ marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
+                      <label>{t("choreography_label")}</label>
+                      <textarea
+                        className="h-16"
+                        style={{ width: "100%", fontSize: 12, padding: 6, borderRadius: 6, border: "1px solid hsl(var(--border))", resize: "vertical" }}
+                        placeholder={t("choreography_ph")}
+                        value={s.choreography ?? ""}
+                        onChange={(e) => update(s.id, { choreography: e.target.value })}
+                      />
+                    </div>
+                  )}
                   {!s.dirBase && (
                     <div className="mini-field" style={{ marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
                       <label>{t("facing_label")}</label>
