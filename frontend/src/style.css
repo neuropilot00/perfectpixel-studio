@@ -58,7 +58,7 @@
   .topbar { display: flex; align-items: center; gap: 12px; padding: 0 14px 0 84px; background: transparent; --wails-draggable: drag; flex-shrink: 0; }
   .topbar > * { --wails-draggable: no-drag; }
   .logo { display: flex; align-items: center; gap: 7px; flex-shrink: 0; user-select: none; }
-  .logo .logo-mark { width: 26px; height: 26px; image-rendering: pixelated; flex-shrink: 0; }
+  .logo .logo-mark { width: 26px; height: 26px; flex-shrink: 0; }
   .topbar-status { flex: 1; display: flex; justify-content: center; min-width: 0; }
   .topbar-actions { display: flex; align-items: center; gap: 6px; }
 

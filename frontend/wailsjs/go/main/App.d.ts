@@ -5,6 +5,8 @@ import {sprite} from '../models';
 
 export function CancelGeneration():Promise<void>;
 
+export function ChatPlan(arg1:string,arg2:string):Promise<main.ChatPlanResult>;
+
 export function ClearSession():Promise<void>;
 
 export function CodexLogin():Promise<main.CodexAuthInfo>;

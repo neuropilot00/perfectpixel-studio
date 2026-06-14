@@ -6,6 +6,10 @@ export function CancelGeneration() {
   return window['go']['main']['App']['CancelGeneration']();
 }
 
+export function ChatPlan(arg1, arg2) {
+  return window['go']['main']['App']['ChatPlan'](arg1, arg2);
+}
+
 export function ClearSession() {
   return window['go']['main']['App']['ClearSession']();
 }

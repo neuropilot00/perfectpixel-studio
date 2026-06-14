@@ -40,22 +40,27 @@ func commonBinDirs() []string {
 	}
 }
 
-// CodexBinPath는 codex 실행 파일의 절대 경로를 견고하게 찾습니다.
+// FindBin은 CLI 실행 파일의 절대 경로를 견고하게 찾습니다.
 // Finder로 띄운 앱은 PATH가 최소라 LookPath만으론 못 찾으므로 일반 설치 경로도 탐색합니다.
-func CodexBinPath() string {
-	if b := os.Getenv("CODEX_BIN"); b != "" {
-		return b
-	}
-	if p, err := exec.LookPath("codex"); err == nil {
+func FindBin(name string) string {
+	if p, err := exec.LookPath(name); err == nil {
 		return p
 	}
 	for _, d := range commonBinDirs() {
-		c := filepath.Join(d, "codex")
+		c := filepath.Join(d, name)
 		if fi, err := os.Stat(c); err == nil && !fi.IsDir() {
 			return c
 		}
 	}
-	return "codex"
+	return name
+}
+
+// CodexBinPath는 codex 실행 파일 경로를 반환합니다(CODEX_BIN 환경변수 우선).
+func CodexBinPath() string {
+	if b := os.Getenv("CODEX_BIN"); b != "" {
+		return b
+	}
+	return FindBin("codex")
 }
 
 // AugmentedEnv는 자식 프로세스(codex)가 node 등 의존 도구를 찾을 수 있도록 PATH를 보강합니다.

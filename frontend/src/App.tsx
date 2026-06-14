@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Images, Package, Palette, Plus, Settings, X } from "lucide-react";
+import { Bot, Images, Package, Palette, Plus, Settings, X } from "lucide-react";
 import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import CharacterPanel from "./components/CharacterPanel";
@@ -8,6 +8,7 @@ import PreviewPanel from "./components/PreviewPanel";
 import SettingsModal, { ISettings } from "./components/SettingsModal";
 import StatesPanel from "./components/StatesPanel";
 import AssetStudioModal from "./components/AssetStudioModal";
+import ChatModal from "./components/ChatModal";
 import { Button } from "./components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./components/ui/dialog";
 import { CharacterDef, DirectionInfo, FALLBACK_PRESETS, FrameItem, PresetInfo, StateDef, selectedFrames, uid } from "./types";
@@ -38,6 +39,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
   const [showAssets, setShowAssets] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [character, setCharacter] = useState<CharacterDef>({
     image: null,
@@ -532,6 +534,9 @@ export default function App() {
           <Button variant="ghost" size="sm" disabled={busy} onClick={handleNewProject} title={t("new_project_tip")}>
             <Plus size={13} /> {t("new_project")}
           </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowChat(true)} title={t("ai_studio_tip")}>
+            <Bot size={13} /> {t("ai_studio")}
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowAssets(true)} title={t("asset_studio_tip")}>
             <Palette size={13} /> {t("asset_studio")}
           </Button>
@@ -616,6 +621,8 @@ export default function App() {
       )}
 
       {showAssets && <AssetStudioModal onClose={() => setShowAssets(false)} onToast={toast} />}
+
+      {showChat && <ChatModal onClose={() => setShowChat(false)} />}
 
       <Dialog open={confirmNew} onOpenChange={(o) => !o && setConfirmNew(false)}>
         <DialogContent className="w-[380px]">

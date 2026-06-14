@@ -239,6 +239,102 @@ func (a *App) CodexLogin() (CodexAuthInfo, error) {
 	return info, nil
 }
 
+// ---------- 내장 AI 챗봇 (에셋 기획자) ----------
+
+// AssetPlan은 챗봇이 만들 에셋 1건의 계획입니다.
+type AssetPlan struct {
+	Type        string `json:"type"`     // character | background | tile | item
+	Description string `json:"description"` // 영어 생성 프롬프트
+	StyleKey    string `json:"styleKey"`
+	Name        string `json:"name"`
+}
+
+// ChatPlanResult는 챗봇 응답 + 생성할 에셋 계획입니다.
+type ChatPlanResult struct {
+	Reply   string      `json:"reply"`
+	Assets  []AssetPlan `json:"assets"`
+	Planner string      `json:"planner"` // claude | codex
+}
+
+const plannerSystem = `You are the built-in AI assistant of a pixel-art game asset studio. ` +
+	`The user chats in Korean. Turn the user's request into concrete game-asset generation tasks. ` +
+	`Reply ONLY with a single compact JSON object on its own, no other prose, no markdown fences. Shape:
+{"reply":"<short friendly Korean confirmation of what you'll make>","assets":[{"type":"character|background|tile|item","description":"<a vivid ENGLISH image-generation prompt>","styleKey":"pixel|chibi|cartoon|retro16","name":"<short english slug>"}]}
+Rules: character=a single creature/person sprite; background=full opaque scene; tile=seamless terrain texture; item=single object/prop. ` +
+	`Write rich English prompts (the user may write Korean). If the request is vague, make sensible choices. If the user is just chatting (no asset needed), return an empty assets array with a helpful reply.`
+
+func buildPlannerPrompt(history, message string) string {
+	var b strings.Builder
+	b.WriteString(plannerSystem)
+	if strings.TrimSpace(history) != "" {
+		b.WriteString("\n\nConversation so far:\n")
+		b.WriteString(history)
+	}
+	b.WriteString("\n\nUser: ")
+	b.WriteString(message)
+	b.WriteString("\n\nJSON:")
+	return b.String()
+}
+
+func extractJSONObject(s string) string {
+	i := strings.Index(s, "{")
+	j := strings.LastIndex(s, "}")
+	if i >= 0 && j > i {
+		return s[i : j+1]
+	}
+	return ""
+}
+
+// ChatPlan은 사용자 메시지를 받아 Claude(가능 시) 또는 Codex로 에셋 계획(JSON)을 만듭니다.
+// 실제 생성은 프론트엔드가 계획의 각 에셋에 대해 GenerateCharacter/GenerateAsset를 호출합니다.
+func (a *App) ChatPlan(history, message string) (ChatPlanResult, error) {
+	if strings.TrimSpace(message) == "" {
+		return ChatPlanResult{}, errors.New("메시지를 입력해 주세요")
+	}
+	prompt := buildPlannerPrompt(history, message)
+
+	// 1) Claude CLI 우선 (가능하면) — 헤드리스 -p 모드
+	if claude := gen.FindBin("claude"); claude != "claude" {
+		ctx, cancel := context.WithTimeout(a.ctx, 90*time.Second)
+		cmd := exec.CommandContext(ctx, claude, "-p", prompt)
+		cmd.Env = gen.AugmentedEnv()
+		out, err := cmd.CombinedOutput()
+		cancel()
+		if err == nil {
+			if js := extractJSONObject(string(out)); js != "" {
+				var r ChatPlanResult
+				if json.Unmarshal([]byte(js), &r) == nil {
+					r.Planner = "claude"
+					return r, nil
+				}
+			}
+		}
+		// Claude 실패(인증/파싱) → Codex로 폴백
+	}
+
+	// 2) Codex CLI 폴백
+	codex := gen.CodexBinPath()
+	ctx, cancel := context.WithTimeout(a.ctx, 120*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, codex, "exec", "--skip-git-repo-check", "--sandbox", "read-only", prompt)
+	cmd.Stdin = nil
+	cmd.Env = gen.AugmentedEnv()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return ChatPlanResult{}, fmt.Errorf("기획자 호출 실패(codex): %v", err)
+	}
+	js := extractJSONObject(string(out))
+	if js == "" {
+		return ChatPlanResult{Reply: strings.TrimSpace(string(out)), Planner: "codex"}, nil
+	}
+	var r ChatPlanResult
+	if err := json.Unmarshal([]byte(js), &r); err != nil {
+		return ChatPlanResult{Reply: strings.TrimSpace(string(out)), Planner: "codex"}, nil
+	}
+	r.Planner = "codex"
+	return r, nil
+}
+
 // ---------- 세션 저장/복원 ----------
 
 // SaveSession은 현재 작업 상태(JSON)를 디스크에 저장합니다 (앱 재시작 시 복원용).
