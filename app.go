@@ -1236,6 +1236,19 @@ func (a *App) ExportProject(args ExportArgs) (string, error) {
 	if err := os.WriteFile(filepath.Join(outDir, prefix+"sprite-sheet.json"), aseJSON, 0o644); err != nil {
 		return "", err
 	}
+	// Godot 4 SpriteFrames(.tres) — 고도에 바로 드래그 임포트
+	godotTres := sprite.BuildGodotTres(manifest, prefix+"sprite-sheet.png")
+	if err := os.WriteFile(filepath.Join(outDir, prefix+"sprite-frames.tres"), godotTres, 0o644); err != nil {
+		return "", err
+	}
+	// TexturePacker(JSON hash) — Unity TexturePacker importer / Phaser atlasHash / PixiJS
+	tpJSON, err := sprite.BuildTexturePackerJSON(manifest)
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(outDir, prefix+"texturepacker.json"), tpJSON, 0o644); err != nil {
+		return "", err
+	}
 
 	// 2) 상태별 GIF + 개별 프레임 PNG
 	for _, sf := range stateFrames {
