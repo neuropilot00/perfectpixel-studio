@@ -15,13 +15,15 @@ type Bone struct {
 	Name   string `json:"name"`
 	Parent int    `json:"parent"` // Skeleton.Bones 인덱스, 루트는 -1
 	// 부모 관절 → 이 본 관절까지의 rest 오프셋(부모 로컬 프레임 기준, 픽셀).
-	OffX, OffY float64 `json:"offX,offY"`
+	OffX float64 `json:"offX"`
+	OffY float64 `json:"offY"`
 	// rest 각도(라디안). 부모 누적각에 더해진다.
 	RestAngle float64      `json:"restAngle"`
 	Part      *image.NRGBA `json:"-"` // 이 본에 붙는 부위 이미지(nil 가능)
 	// 부위 이미지 안에서의 관절점(픽셀). 이 점이 월드 관절 위치에 놓이고 그 주위로 회전.
-	PivotX, PivotY float64 `json:"pivotX,pivotY"`
-	Z              int     `json:"z"` // 그리기 순서(작을수록 뒤)
+	PivotX float64 `json:"pivotX"`
+	PivotY float64 `json:"pivotY"`
+	Z      int     `json:"z"` // 그리기 순서(작을수록 뒤)
 }
 
 // Skeleton은 본 배열(계층). Bones[i].Parent < i 를 권장(위상정렬된 입력).
