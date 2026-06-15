@@ -181,6 +181,7 @@ export namespace main {
 	    description: string;
 	    styleKey: string;
 	    styleCustom: string;
+	    view: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GenerateCharacterArgs(source);
@@ -191,6 +192,7 @@ export namespace main {
 	        this.description = source["description"];
 	        this.styleKey = source["styleKey"];
 	        this.styleCustom = source["styleCustom"];
+	        this.view = source["view"];
 	    }
 	}
 	export class GenerateCharacterRefArgs {
@@ -198,6 +200,7 @@ export namespace main {
 	    description: string;
 	    styleKey: string;
 	    styleCustom: string;
+	    view: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GenerateCharacterRefArgs(source);
@@ -209,6 +212,7 @@ export namespace main {
 	        this.description = source["description"];
 	        this.styleKey = source["styleKey"];
 	        this.styleCustom = source["styleCustom"];
+	        this.view = source["view"];
 	    }
 	}
 	export class GenerateEditArgs {

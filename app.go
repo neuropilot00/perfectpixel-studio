@@ -523,6 +523,7 @@ type GenerateCharacterArgs struct {
 	Description string `json:"description"`
 	StyleKey    string `json:"styleKey"`
 	StyleCustom string `json:"styleCustom"`
+	View        string `json:"view"` // front | side | threequarter (빈 값=front)
 }
 
 // GenerateCharacter는 설명만으로 베이스 캐릭터 이미지를 생성합니다.
@@ -531,7 +532,7 @@ func (a *App) GenerateCharacter(args GenerateCharacterArgs) (string, error) {
 		return "", errors.New("캐릭터 설명을 입력해 주세요")
 	}
 	style := sprite.ResolveStyle(args.StyleKey, args.StyleCustom)
-	prompt := sprite.BuildCharacterPrompt(args.Description, style)
+	prompt := sprite.BuildCharacterPrompt(args.Description, style, args.View)
 
 	p, err := a.provider()
 	if err != nil {
@@ -784,6 +785,7 @@ type GenerateCharacterRefArgs struct {
 	Description    string `json:"description"`
 	StyleKey       string `json:"styleKey"`
 	StyleCustom    string `json:"styleCustom"`
+	View           string `json:"view"` // front | side | threequarter
 }
 
 // GenerateCharacterRef는 레퍼런스 이미지의 화풍을 따라 설명에 맞는 다른 캐릭터를 생성합니다.
@@ -805,7 +807,7 @@ func (a *App) GenerateCharacterRef(args GenerateCharacterRefArgs) (string, error
 	}
 
 	style := sprite.ResolveStyle(args.StyleKey, args.StyleCustom)
-	prompt := sprite.BuildCharacterRefPrompt(args.Description, style)
+	prompt := sprite.BuildCharacterRefPrompt(args.Description, style, args.View)
 
 	p, err := a.provider()
 	if err != nil {

@@ -72,7 +72,7 @@ func savePNG(path string, img image.Image) {
 
 // generateBase는 베이스 캐릭터를 생성하고 배경 제거 + 픽셀화한 정리본과 PNG 바이트를 반환합니다.
 func generateBase(ctx context.Context, p gen.Provider, desc, styleKey, style string) (*image.NRGBA, []byte, error) {
-	raw, err := p.GenerateImage(ctx, sprite.BuildCharacterPrompt(desc, style), nil, "1:1")
+	raw, err := p.GenerateImage(ctx, sprite.BuildCharacterPrompt(desc, style, ""), nil, "1:1")
 	if err != nil {
 		return nil, nil, err
 	}

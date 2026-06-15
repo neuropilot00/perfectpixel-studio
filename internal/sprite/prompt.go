@@ -61,16 +61,38 @@ func rejectClause() string {
 	return b.String()
 }
 
+// viewClause는 시점(정면/측면/¾)별 자세·구도 지시를 반환합니다.
+// side(측면)는 횡스크롤 걷기/달리기 애니메이션에 맞는 옆모습 캐릭터를 만듭니다.
+func viewClause(view string) (opening, framing string) {
+	switch view {
+	case "side":
+		return "Produce one complete game-character reference sprite as a STRICT SIDE PROFILE facing RIGHT (a side-scroller side view).",
+			"- Pure side view: the camera is exactly to the character's side; we see one eye, the profile of the face, and the body from the side. Near arm/leg overlap the far ones — do not splay them out.\n" +
+				"- Relaxed standing side stance, head to feet, vertically centered, ~3/4 of canvas height, breathing room all sides.\n" +
+				"- One continuous silhouette facing right — nothing detached.\n\n"
+	case "threequarter":
+		return "Produce one complete game-character reference sprite in a 3/4 front view (turned slightly to one side), relaxed standing pose.",
+			"- 3/4 view: front-ish but angled, showing some side depth.\n" +
+				"- Head to feet, vertically centered, ~3/4 of canvas height, breathing room all sides.\n" +
+				"- One continuous silhouette — nothing detached.\n\n"
+	default: // front
+		return "Produce one complete game-character reference sprite in a relaxed, front-facing standing pose.",
+			"- A single figure, head to feet, vertically centered, occupying about three quarters of the canvas height with generous breathing room on every side.\n" +
+				"- Symmetric A-pose: arms eased away from the torso, feet level and shoulder-width, weight balanced.\n" +
+				"- One continuous silhouette — nothing detached, no trailing accessories or particles.\n\n"
+	}
+}
+
 // BuildCharacterPrompt는 텍스트 설명 → 베이스 캐릭터 이미지 생성 프롬프트를 만듭니다.
-func BuildCharacterPrompt(description, style string) string {
+// view: "front"(기본) | "side"(횡스크롤 옆모습) | "threequarter".
+func BuildCharacterPrompt(description, style, view string) string {
+	opening, framing := viewClause(view)
 	var b strings.Builder
-	b.WriteString("Produce one complete game-character reference sprite in a relaxed, front-facing standing pose.\n\n")
+	b.WriteString(opening + "\n\n")
 	fmt.Fprintf(&b, "Subject: %s.\n\n", strings.TrimSpace(description))
 	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
 	b.WriteString("Framing:\n")
-	b.WriteString("- A single figure, head to feet, vertically centered, occupying about three quarters of the canvas height with generous breathing room on every side.\n")
-	b.WriteString("- Symmetric A-pose: arms eased away from the torso, feet level and shoulder-width, weight balanced.\n")
-	b.WriteString("- One continuous silhouette — nothing detached, no trailing accessories or particles.\n\n")
+	b.WriteString(framing)
 	b.WriteString(canvasContract())
 	return b.String()
 }
@@ -93,18 +115,17 @@ func BuildEditPrompt(instruction, style string, transparent bool) string {
 
 // BuildCharacterRefPrompt는 레퍼런스 이미지의 화풍을 따라 "다른" 캐릭터를 만드는 프롬프트입니다.
 // 레퍼런스 이미지는 refImages[0]로 함께 전달되어야 합니다.
-func BuildCharacterRefPrompt(description, style string) string {
+func BuildCharacterRefPrompt(description, style, view string) string {
+	opening, framing := viewClause(view)
 	var b strings.Builder
-	b.WriteString("Produce one complete game-character reference sprite in a relaxed, front-facing standing pose.\n\n")
+	b.WriteString(opening + "\n\n")
 	b.WriteString("Style reference (top priority): The attached image is a STYLE reference, NOT the subject. ")
 	b.WriteString("Match its art style EXACTLY — pixel density, outline weight, shading steps, color palette range, level of detail and overall proportions/scale. ")
 	b.WriteString("But draw a DIFFERENT character as described below; do NOT copy the reference's species, identity, colors-as-meaning, or silhouette.\n\n")
 	fmt.Fprintf(&b, "Subject (the new character to draw): %s.\n\n", strings.TrimSpace(description))
 	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
 	b.WriteString("Framing:\n")
-	b.WriteString("- A single figure, head to feet, vertically centered, occupying about three quarters of the canvas height with generous breathing room.\n")
-	b.WriteString("- Symmetric A-pose: arms eased away from the torso, feet level and shoulder-width.\n")
-	b.WriteString("- One continuous silhouette — nothing detached.\n\n")
+	b.WriteString(framing)
 	b.WriteString(canvasContract())
 	return b.String()
 }
@@ -160,6 +181,7 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 	fmt.Fprintf(&b, "Draw a single horizontal row of exactly %d game-sprite poses of one character for the \"%s\" animation, ordered left to right. This is raw sprite art, not a photo or a film — draw only the character poses on a flat background.\n\n", n, spec.Name)
 
 	b.WriteString("Subject lock (top priority):\n")
+	b.WriteString("- The FIRST attached image is the canonical character — treat it as the single source of truth. Copy its identity pixel-for-pixel: silhouette, proportions, face, hairstyle, build, outfit, accessories. The ONLY thing allowed to change between frames is the body pose; the character itself must look like the exact same drawing in every frame.\n")
 	b.WriteString("- The attached image is the canonical character. Match it exactly across every pose: face, hairstyle, build, outfit, accessories.\n")
 	b.WriteString("- Palette is binding. Re-sample each region's hue, saturation and value from the reference — skin, hair, every garment, every piece of gear. Do not re-tint, re-light, brighten, darken, or substitute a similar shade.\n")
 	b.WriteString("- Hold one fixed camera and facing. The figure never rotates, mirrors, ages, or restyles between poses — only the body moves.\n\n")

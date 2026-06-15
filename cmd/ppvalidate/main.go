@@ -265,7 +265,7 @@ func run(percat int, list, dirset, outDir, desc, styleKey string, timeout time.D
 	// 1) 베이스 캐릭터 생성 (키 유효성 검증 겸용)
 	t0 := time.Now()
 	fmt.Print("베이스 캐릭터 생성 중... ")
-	craw, err := p.GenerateImage(ctx, sprite.BuildCharacterPrompt(desc, style), nil, "1:1")
+	craw, err := p.GenerateImage(ctx, sprite.BuildCharacterPrompt(desc, style, ""), nil, "1:1")
 	if err != nil {
 		fmt.Printf("실패: %v\n", err)
 		os.Exit(1)

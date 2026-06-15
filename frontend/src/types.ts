@@ -50,6 +50,7 @@ export interface CharacterDef {
   description: string;
   styleKey: string;
   styleCustom: string;
+  view?: string; // front | side | threequarter (AI 생성 시점, 기본 front)
 }
 
 export interface StatePreset {

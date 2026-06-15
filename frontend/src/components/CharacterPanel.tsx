@@ -76,6 +76,7 @@ export default function CharacterPanel({ character, cellSize, busy, onChange, on
         description: character.description,
         styleKey: character.styleKey,
         styleCustom: character.styleCustom,
+        view: character.view ?? "front",
       } as any);
       if (dataURL) set({ image: dataURL });
     } catch (e) {
@@ -169,10 +170,26 @@ export default function CharacterPanel({ character, cellSize, busy, onChange, on
       </div>
 
       {mode === "ai" && (
-        <Button onClick={generateBase} disabled={genBusy || busy || !character.description.trim()}>
-          {genBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-          {genBusy ? t("generating_char") : t("generate_base")}
-        </Button>
+        <>
+          <div className="field">
+            <Label>{t("view_label")}</Label>
+            <Select value={character.view ?? "front"} onValueChange={(v) => set({ view: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="front">{t("view_front")}</SelectItem>
+                <SelectItem value="side">{t("view_side")}</SelectItem>
+                <SelectItem value="threequarter">{t("view_threequarter")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="hint">{t("view_hint")}</p>
+          </div>
+          <Button onClick={generateBase} disabled={genBusy || busy || !character.description.trim()}>
+            {genBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {genBusy ? t("generating_char") : t("generate_base")}
+          </Button>
+        </>
       )}
 
       <div className="sub-title">{t("style")}</div>
