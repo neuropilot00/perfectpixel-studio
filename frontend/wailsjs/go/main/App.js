@@ -10,6 +10,10 @@ export function ChatPlan(arg1, arg2) {
   return window['go']['main']['App']['ChatPlan'](arg1, arg2);
 }
 
+export function Choreograph(arg1) {
+  return window['go']['main']['App']['Choreograph'](arg1);
+}
+
 export function ClaudeStatus() {
   return window['go']['main']['App']['ClaudeStatus']();
 }

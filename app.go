@@ -376,6 +376,70 @@ func (a *App) ChatPlan(history, message string) (ChatPlanResult, error) {
 	return r, nil
 }
 
+// runPlanner는 claude(가능 시) 또는 codex로 프롬프트를 실행해 응답 텍스트를 반환합니다.
+func (a *App) runPlanner(prompt string) (string, error) {
+	if claude := gen.FindBin("claude"); claude != "claude" {
+		ctx, cancel := context.WithTimeout(a.ctx, 90*time.Second)
+		cmd := exec.CommandContext(ctx, claude, "-p", prompt)
+		cmd.Stdin = nil
+		env := gen.SanitizedAuthEnv()
+		if tok := strings.TrimSpace(config.Load().ClaudeToken); tok != "" {
+			env = append(env, "CLAUDE_CODE_OAUTH_TOKEN="+tok)
+		}
+		cmd.Env = env
+		if out, err := cmd.CombinedOutput(); err == nil {
+			s := strings.TrimSpace(string(out))
+			low := strings.ToLower(s)
+			if s != "" && !strings.Contains(low, "not logged in") && !strings.Contains(low, "invalid authentication") {
+				cancel()
+				return s, nil
+			}
+		}
+		cancel()
+	}
+	codex := gen.CodexBinPath()
+	ctx, cancel := context.WithTimeout(a.ctx, 120*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, codex, "exec", "--skip-git-repo-check", "--sandbox", "read-only", prompt)
+	cmd.Stdin = nil
+	cmd.Env = gen.AugmentedEnv()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("기획자 호출 실패: %v", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// ChoreographArgs는 동작 안무 자동작성 요청입니다.
+type ChoreographArgs struct {
+	Description string `json:"description"`
+	Action      string `json:"action"`
+	Frames      int    `json:"frames"`
+}
+
+// Choreograph는 캐릭터·동작에 맞춘 비트별 상세 안무를 LLM으로 작성합니다(상세 안무 필드에 채움).
+func (a *App) Choreograph(args ChoreographArgs) (string, error) {
+	action := strings.TrimSpace(args.Action)
+	if action == "" {
+		return "", errors.New("동작을 입력해 주세요")
+	}
+	sys := "You are a 2D game animation director. Write a vivid, beat-by-beat CHOREOGRAPHY for a looping sprite animation of the given action, tailored to this specific character. " +
+		"Output ONLY the choreography text — no preamble, no headings, no bullet points, no numbers or digits, and never mention frames, grids, pixels, cells, or sprite sheets. " +
+		"Describe body position, weight shift, limb placement and motion arcs as one flowing, looping performance where the last beat hands seamlessly back into the first. " +
+		"For locomotion (walk/run/etc.) STRICTLY ALTERNATE left and right legs — state which leg steps forward and which pushes off, with every beat a distinctly different leg configuration and the opposite arm swinging. Keep it to about 3-5 sentences."
+	prompt := sys + "\n\nCharacter: " + strings.TrimSpace(args.Description) + "\nAction: " + action + "\n\nChoreography:"
+	out, err := a.runPlanner(prompt)
+	if err != nil {
+		return "", err
+	}
+	// codex/claude가 머리말을 붙이면 마지막 비어있지 않은 문단만 취함
+	out = strings.TrimSpace(out)
+	if idx := strings.LastIndex(out, "Choreography:"); idx >= 0 {
+		out = strings.TrimSpace(out[idx+len("Choreography:"):])
+	}
+	return out, nil
+}
+
 // ---------- 세션 저장/복원 ----------
 
 // SaveSession은 현재 작업 상태(JSON)를 디스크에 저장합니다 (앱 재시작 시 복원용).
@@ -972,14 +1036,23 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 				"프레임 간 움직임이 거의 없습니다. 동작이 더 분명하게 드러나도록 동작 설명을 보강해 재생성하는 것을 권장합니다.")
 		}
 		errCount := len(insp.Errors)
+		// 인접 중복(포즈 안 바뀐) 프레임 감지 — 걷기 등에서 같은 포즈가 연속되면 그 지점에서 버벅임
+		dupPairs := 0
+		if cand.Found >= 2 {
+			dupPairs = sprite.AdjacentDupPairs(extracted.Frames, 1)
+		}
+		if dupPairs > 0 {
+			cand.Warnings = append(cand.Warnings,
+				fmt.Sprintf("거의 같은 포즈가 연속된 프레임이 %d쌍 있습니다(그 지점에서 버벅임). 재생성을 권장합니다.", dupPairs))
+		}
 
-		// 프레임 수가 정확하고 심각한 품질 문제가 없으면 즉시 성공
-		if cand.Found == expected && insp.Ok() {
+		// 프레임 수가 정확하고 심각한 품질 문제도 중복도 없으면 즉시 성공
+		if cand.Found == expected && insp.Ok() && dupPairs == 0 {
 			saveGalleryFrames(args.State.Name, extracted.Frames)
 			return cand, nil
 		}
-		// 최선 후보 갱신: 프레임 수 우선, 같으면 오류 적은 쪽
-		score := cand.Found*100 - errCount*10
+		// 최선 후보 갱신: 프레임 수 우선, 같으면 오류·중복 적은 쪽
+		score := cand.Found*100 - errCount*10 - dupPairs*5
 		if score > bestScore {
 			best, bestScore, bestImgs = cand, score, extracted.Frames
 		}
@@ -995,6 +1068,10 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 		if len(insp.RetryHints) > 0 {
 			fixes = append(fixes, "QUALITY CORRECTIONS detected by automated inspection (fix all of these):")
 			fixes = append(fixes, insp.RetryHints...)
+		}
+		if dupPairs > 0 {
+			fixes = append(fixes, fmt.Sprintf(
+				"DUPLICATE POSES: %d adjacent frame pair(s) show the SAME pose — this causes a stutter. Make EVERY pose visibly different from its neighbours; never hold or repeat a pose across two adjacent frames. Each frame must advance the motion by a clear, even step.", dupPairs))
 		}
 		auto := strings.Join(fixes, "\n")
 		if args.Feedback != "" {

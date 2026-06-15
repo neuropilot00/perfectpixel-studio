@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, HelpCircle, Images, Package, Palette, PersonStanding, Plus, Settings, Sparkles, Users, Wand2, X } from "lucide-react";
-import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession, CodexStatus } from "../wailsjs/go/main/App";
+import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession, CodexStatus, Choreograph } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import CharacterPanel from "./components/CharacterPanel";
 import GalleryModal from "./components/GalleryModal";
@@ -489,6 +489,25 @@ export default function App() {
     }
   };
 
+  // 상태의 상세 안무를 LLM(플래너)으로 자동 작성해 채운다
+  const handleChoreograph = async (id: string): Promise<void> => {
+    const st = statesRef.current.find((s) => s.id === id);
+    if (!st) return;
+    try {
+      const text = (await Choreograph({
+        description: charRef.current.description || charRef.current.name || "game character",
+        action: st.action || st.name,
+        frames: st.frames,
+      } as any)) as string;
+      if (text && text.trim()) {
+        updateState(id, { choreography: text.trim() });
+        toast("success", t("choreo_done"));
+      }
+    } catch (e) {
+      toast("error", String(e));
+    }
+  };
+
   const handleCancel = () => {
     cancelRef.current = true;
     CancelGeneration();
@@ -662,6 +681,7 @@ export default function App() {
             onGenerateAll={handleGenerateAll}
             onAddCustomBatch={handleAddCustomBatch}
             onGenerateDirectionSet={handleGenerateDirectionSet}
+            onChoreograph={handleChoreograph}
           />
         </section>
 

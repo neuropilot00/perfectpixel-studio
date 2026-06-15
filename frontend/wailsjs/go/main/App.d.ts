@@ -7,6 +7,8 @@ export function CancelGeneration():Promise<void>;
 
 export function ChatPlan(arg1:string,arg2:string):Promise<main.ChatPlanResult>;
 
+export function Choreograph(arg1:main.ChoreographArgs):Promise<string>;
+
 export function ClaudeStatus():Promise<main.ClaudeAuthInfo>;
 
 export function ClearSession():Promise<void>;

@@ -137,3 +137,23 @@ func IdentityConsistency(frames []*image.NRGBA) float64 {
 	}
 	return sim
 }
+
+// AdjacentDupPairs는 인접 프레임이 거의 동일한(포즈가 안 바뀐) 쌍의 개수를 셉니다.
+// dHash 해밍거리 ≤ maxHamming 이면 "사실상 같은 포즈"로 간주 — 걷기에서 같은 포즈가
+// 두 프레임 연속 나오면 그 지점에서 한 박자 멈춤(버벅)이 생기므로 이를 감지합니다.
+func AdjacentDupPairs(frames []*image.NRGBA, maxHamming int) int {
+	if len(frames) < 2 {
+		return 0
+	}
+	hashes := make([]uint64, len(frames))
+	for i, f := range frames {
+		hashes[i] = dHash(f)
+	}
+	dup := 0
+	for i := 1; i < len(frames); i++ {
+		if hamming(hashes[i-1], hashes[i]) <= maxHamming {
+			dup++
+		}
+	}
+	return dup
+}

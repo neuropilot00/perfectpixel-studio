@@ -22,6 +22,7 @@ interface IProps {
   onGenerateAll: () => void;
   onAddCustomBatch: (count: number) => void;
   onGenerateDirectionSet: (id: string) => void;
+  onChoreograph: (id: string) => Promise<void>;
 }
 
 // 3단계: 애니메이션 상태 구성 패널
@@ -39,10 +40,12 @@ export default function StatesPanel({
   onGenerateAll,
   onAddCustomBatch,
   onGenerateDirectionSet,
+  onChoreograph,
 }: IProps) {
   const { t, lang } = useI18n();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [customCount, setCustomCount] = useState(1);
+  const [choreoBusy, setChoreoBusy] = useState<string | null>(null);
 
   const addPresetInfo = (p: PresetInfo) => {
     const st = presetInfoToState(p);
@@ -208,7 +211,26 @@ export default function StatesPanel({
                   )}
                   {!s.mirrorOf && (
                     <div className="mini-field" style={{ marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
-                      <label>{t("choreography_label")}</label>
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                        <label>{t("choreography_label")}</label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={choreoBusy === s.id}
+                          onClick={async () => {
+                            setChoreoBusy(s.id);
+                            try {
+                              await onChoreograph(s.id);
+                            } finally {
+                              setChoreoBusy(null);
+                            }
+                          }}
+                          title={t("choreo_tip")}
+                        >
+                          {choreoBusy === s.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                          {t("choreo_btn")}
+                        </Button>
+                      </div>
                       <textarea
                         className="h-16"
                         style={{ width: "100%", fontSize: 12, padding: 6, borderRadius: 6, border: "1px solid hsl(var(--border))", resize: "vertical" }}

@@ -52,6 +52,22 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class ChoreographArgs {
+	    description: string;
+	    action: string;
+	    frames: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChoreographArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.description = source["description"];
+	        this.action = source["action"];
+	        this.frames = source["frames"];
+	    }
+	}
 	export class ClaudeAuthInfo {
 	    installed: boolean;
 	    hasToken: boolean;
