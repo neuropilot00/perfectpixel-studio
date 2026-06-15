@@ -247,13 +247,16 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 }
 
 // AspectForFrames는 프레임 수에 맞는 생성 종횡비를 고릅니다.
+// 21:9처럼 지나치게 납작한 캔버스는 세로 공간이 부족해 머리·발이 잘리기 쉬워 쓰지 않고,
+// 16:9 이하로 제한합니다(각 칸에 세로 여유 확보). codex(gpt-image-2)에선 텍스트 힌트로만
+// 작용해 모델이 느슨하게 따릅니다.
 func AspectForFrames(frames int) string {
 	switch {
 	case frames <= 1:
 		return "1:1"
-	case frames <= 3:
-		return "16:9"
+	case frames <= 2:
+		return "3:2"
 	default:
-		return "21:9"
+		return "16:9"
 	}
 }
