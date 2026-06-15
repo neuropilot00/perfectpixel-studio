@@ -93,19 +93,25 @@ func connectedKeepMask(strip *image.NRGBA, span colSpan, h, gap int) []bool {
 	return keep
 }
 
-// extractContent는 span 구간 안의 불투명 픽셀을 bbox로 잘라냅니다.
-// 메인 몸체와 연결되지 않은 동떨어진 조각(옆 포즈 누출)만 connectedKeepMask로 걸러내므로,
-// 몸통에 이어진 발/팔은 멀리 뻗어 있어도 유지됩니다(강체 컬럼 필터의 발 잘림 해결).
+// extractContent는 span 구간 안의 불투명 픽셀을 bbox로 잘라냅니다(컬럼클립 경로).
+// 메인 몸체와 연결되지 않은 동떨어진 조각(옆 포즈 누출)만 connectedKeepMask로 걸러냅니다.
+// 포즈가 서로 닿아 컬럼 분할이 불가피한 경우의 폴백입니다.
 func extractContent(strip *image.NRGBA, span colSpan, h int) frameContent {
 	w := span.end - span.start
 	keep := connectedKeepMask(strip, span, h, 2)
-	kept := func(x, y int) bool {
+	return extractWithKeep(strip, span.start, span.end, h, func(x, y int) bool {
 		i := y*w + (x - span.start)
 		return i >= 0 && i < len(keep) && keep[i]
-	}
-	minX, minY, maxX, maxY := span.end, h, span.start-1, -1
+	})
+}
+
+// extractWithKeep는 [xlo,xhi)×h 영역에서 kept(x,y)가 참인 픽셀을 bbox로 잘라냅니다.
+// 수평 앵커(cx)는 가장 조밀한 세로 열 묶음(=토르소/몸통 코어)의 중심을 씁니다. 얇게 뻗은
+// 팔다리는 열 픽셀 수가 적어 자동 제외되므로 스윙에 불변 → 프레임 정렬이 안정됩니다.
+func extractWithKeep(strip *image.NRGBA, xlo, xhi, h int, kept func(x, y int) bool) frameContent {
+	minX, minY, maxX, maxY := xhi, h, xlo-1, -1
 	var sumWX, sumW float64
-	for x := span.start; x < span.end; x++ {
+	for x := xlo; x < xhi; x++ {
 		for y := 0; y < h; y++ {
 			if !kept(x, y) {
 				continue
@@ -142,9 +148,6 @@ func extractContent(strip *image.NRGBA, span colSpan, h int) frameContent {
 			copy(dst.Pix[di:di+4], strip.Pix[si:si+4])
 		}
 	}
-	// 수평 앵커: 몸 전체 무게중심은 팔다리 스윙에 흔들려 프레임 간 미끄러짐(버벅)을 유발한다.
-	// 대신 "가장 조밀한 세로 열 묶음(=토르소/몸통 코어)"의 중심을 앵커로 쓴다. 얇게 뻗은
-	// 팔다리는 열 픽셀 수가 적어 자동 제외되므로 스윙에 불변 → 프레임 정렬이 안정된다.
 	colCount := make([]int, gw)
 	maxCol := 0
 	for x := 0; x < gw; x++ {
@@ -180,6 +183,176 @@ func extractContent(strip *image.NRGBA, span colSpan, h int) frameContent {
 	return frameContent{img: dst, minX: minX, cx: cx, bottom: maxY}
 }
 
+// component는 전체 스트립 연결성분 하나의 통계입니다.
+type component struct {
+	size                   int
+	sumX                   float64
+	minX, minY, maxX, maxY int
+}
+
+func (c component) centroidX() float64 {
+	if c.size == 0 {
+		return 0
+	}
+	return c.sumX / float64(c.size)
+}
+
+// labelStrip은 전체 스트립을 8근방(gap px 빈틈 브리지) 연결성분으로 라벨링합니다.
+// labels[y*w+x] = 성분 id(투명/배경은 -1). 성분별 크기·무게중심X·바운딩박스를 함께 반환합니다.
+func labelStrip(img *image.NRGBA, gap int) (labels []int, comps []component) {
+	w, h := img.Rect.Dx(), img.Rect.Dy()
+	if w <= 0 || h <= 0 {
+		return nil, nil
+	}
+	labels = make([]int, w*h)
+	for i := range labels {
+		labels[i] = -1
+	}
+	op := make([]bool, w*h)
+	for y := 0; y < h; y++ {
+		base := img.PixOffset(0, y) + 3
+		for x := 0; x < w; x++ {
+			if img.Pix[base+x*4] > alphaThreshold {
+				op[y*w+x] = true
+			}
+		}
+	}
+	stack := make([]int, 0, 1024)
+	for s := 0; s < w*h; s++ {
+		if !op[s] || labels[s] != -1 {
+			continue
+		}
+		id := len(comps)
+		c := component{minX: w, minY: h, maxX: -1, maxY: -1}
+		labels[s] = id
+		stack = append(stack[:0], s)
+		for len(stack) > 0 {
+			p := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			px, py := p%w, p/w
+			c.size++
+			c.sumX += float64(px)
+			if px < c.minX {
+				c.minX = px
+			}
+			if px > c.maxX {
+				c.maxX = px
+			}
+			if py < c.minY {
+				c.minY = py
+			}
+			if py > c.maxY {
+				c.maxY = py
+			}
+			for dy := -gap; dy <= gap; dy++ {
+				ny := py + dy
+				if ny < 0 || ny >= h {
+					continue
+				}
+				for dx := -gap; dx <= gap; dx++ {
+					nx := px + dx
+					if nx < 0 || nx >= w {
+						continue
+					}
+					q := ny*w + nx
+					if op[q] && labels[q] == -1 {
+						labels[q] = id
+						stack = append(stack, q)
+					}
+				}
+			}
+		}
+		comps = append(comps, c)
+	}
+	return labels, comps
+}
+
+// bboxGap은 두 성분 바운딩박스의 떨어진 거리(겹치면 0)를 반환합니다.
+func bboxGap(a, b component) int {
+	dx := 0
+	if b.minX > a.maxX {
+		dx = b.minX - a.maxX
+	} else if a.minX > b.maxX {
+		dx = a.minX - b.maxX
+	}
+	dy := 0
+	if b.minY > a.maxY {
+		dy = b.minY - a.maxY
+	} else if a.minY > b.maxY {
+		dy = a.minY - b.maxY
+	}
+	if dx > dy {
+		return dx
+	}
+	return dy
+}
+
+// extractByComponents는 전체 스트립 연결성분을 각 세그먼트(무게중심 X 기준)에 배정하고,
+// 세그먼트별로 배정된 성분들의 픽셀 합집합을 프레임으로 추출합니다. 포즈가 서로 닿지
+// 않으면 각 포즈가 한 성분이라, 가로로 멀리 뻗은 발도 그 성분에 포함되어 잘리지 않습니다.
+// 무게중심이 없는 세그먼트(인접 성분이 가져감)는 컬럼클립으로 폴백합니다.
+func extractByComponents(strip *image.NRGBA, labels []int, comps []component, segs []colSpan, h int) []frameContent {
+	w := strip.Rect.Dx()
+	maxSize := 0
+	for _, c := range comps {
+		if c.size > maxSize {
+			maxSize = c.size
+		}
+	}
+	noise := maxSize * 2 / 100 // 최대 성분의 2% 미만은 잡티로 무시
+	var fcs []frameContent
+	for _, seg := range segs {
+		main, mainSize := -1, 0
+		var ids []int
+		for id, c := range comps {
+			if c.size <= noise {
+				continue
+			}
+			cx := int(c.centroidX())
+			if cx >= seg.start && cx < seg.end {
+				ids = append(ids, id)
+				if c.size > mainSize {
+					mainSize, main = c.size, id
+				}
+			}
+		}
+		if main < 0 {
+			if fc := extractContent(strip, seg, h); fc.img != nil {
+				fcs = append(fcs, fc)
+			}
+			continue
+		}
+		keepID := map[int]bool{main: true}
+		mc := comps[main]
+		for _, id := range ids {
+			if id == main {
+				continue
+			}
+			c := comps[id]
+			if bboxGap(mc, c) <= 15 || c.size*100 >= mainSize*40 {
+				keepID[id] = true
+			}
+		}
+		xlo, xhi := w, 0
+		for id := range keepID {
+			if comps[id].minX < xlo {
+				xlo = comps[id].minX
+			}
+			if comps[id].maxX+1 > xhi {
+				xhi = comps[id].maxX + 1
+			}
+		}
+		fc := extractWithKeep(strip, xlo, xhi, h, func(x, y int) bool {
+			l := labels[y*w+x]
+			return l >= 0 && keepID[l]
+		})
+		if fc.img != nil {
+			fcs = append(fcs, fc)
+		}
+	}
+	return fcs
+}
+
 // ExtractFrames는 투명 배경 스트립에서 포즈를 투영 분할로 검출해 셀 크기 프레임으로
 // 만듭니다. 모든 프레임에 공통 스케일을 적용하고, 질량 중심으로 수평 정렬하며,
 // 공통 베이스라인 기준으로 수직 오프셋(점프 호 등)을 보존합니다.
@@ -192,11 +365,31 @@ func ExtractFrames(strip *image.NRGBA, expected, cellW, cellH, margin int) Extra
 	}
 	h := strip.Rect.Dy()
 
+	// 전체 스트립을 연결성분으로 라벨링. 유의미 성분(최대의 2% 이상) 수가 세그먼트 수
+	// 이상이면 = 포즈들이 서로 떨어져 있다는 뜻 → 성분 기반 추출(발이 옆으로 뻗어도 안 잘림).
+	// 적으면(포즈가 닿아 한 덩어리) 컬럼클립으로 폴백.
+	labels, comps := labelStrip(strip, 2)
+	maxSize := 0
+	for _, c := range comps {
+		if c.size > maxSize {
+			maxSize = c.size
+		}
+	}
+	sig := 0
+	for _, c := range comps {
+		if c.size*100 >= maxSize*2 {
+			sig++
+		}
+	}
+
 	var fcs []frameContent
-	for _, s := range segs {
-		fc := extractContent(strip, s, h)
-		if fc.img != nil {
-			fcs = append(fcs, fc)
+	if len(comps) > 0 && sig >= len(segs) {
+		fcs = extractByComponents(strip, labels, comps, segs, h)
+	} else {
+		for _, s := range segs {
+			if fc := extractContent(strip, s, h); fc.img != nil {
+				fcs = append(fcs, fc)
+			}
 		}
 	}
 	if len(fcs) == 0 {
@@ -205,11 +398,12 @@ func ExtractFrames(strip *image.NRGBA, expected, cellW, cellH, margin int) Extra
 	}
 
 	res.Frames = placeFrames(fcs, cellW, cellH, margin)
-	res.Found = natural
-	if natural != expected {
+	res.Found = len(fcs)
+	if res.Found != expected {
 		res.Warnings = append(res.Warnings,
-			fmt.Sprintf("기대한 %d개와 다른 %d개의 포즈가 감지되었습니다. 포즈가 겹쳤거나 누락됐을 수 있어 재생성을 권장합니다.", expected, natural))
+			fmt.Sprintf("기대한 %d개와 다른 %d개의 포즈가 감지되었습니다. 포즈가 겹쳤거나 누락됐을 수 있어 재생성을 권장합니다.", expected, res.Found))
 	}
+	_ = natural
 	return res
 }
 

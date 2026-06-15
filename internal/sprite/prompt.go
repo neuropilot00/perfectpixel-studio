@@ -228,9 +228,11 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 	fmt.Fprintf(&b, "- Divide the canvas into exactly %d equal-width vertical cells side by side (a 1×%d grid), each the same size. Draw exactly one pose per cell — %d poses total, no more, no fewer. Count them before finishing.\n", n, n, n)
 	b.WriteString("- CENTER each pose inside its own cell: the body's center of mass sits on that cell's vertical centre line, with equal empty margin on the left and right of the pose within the cell.\n")
 	b.WriteString("- Each pose stays FULLY inside its own cell with clear empty margins on all four sides; nothing — limb, foot, hair, cape, weapon, effect — crosses a cell boundary into a neighbour. If a pose would reach over, scale the whole figure down so it fits with margin.\n")
-	b.WriteString("- Every pose is the SAME size at one shared scale, each filling about 70-80% of the cell height. No pose larger, smaller, or set further back than the others.\n")
+	b.WriteString("- WIDE actions matter most: for big strides (running, sprinting, kicking, lunging) the legs spread far — size the figure SMALL ENOUGH that even the most extended stride keeps BOTH feet and BOTH hands well inside the cell, with a wide empty gutter (at least 20% of a cell width) of clean background between every pose so no two poses ever come near each other. Never let the extended rear foot or front foot reach into a neighbouring cell.\n")
+	b.WriteString("- Leave clear empty background BELOW every pose's feet — feet must never touch or run off the bottom edge of the canvas; keep both feet fully drawn, never cropped.\n")
+	b.WriteString("- Every pose is the SAME size at one shared scale, each filling about 65-75% of the cell height (leave room for wide strides). No pose larger, smaller, or set further back than the others.\n")
 	b.WriteString("- Each pose is ONE whole, connected body — never split into separate pieces; poses never touch, overlap, or merge.\n")
-	b.WriteString("- All poses stand on one common ground baseline near the bottom of the cells, unless the action leaves the ground (a jump), then vary height to show the arc.\n\n")
+	b.WriteString("- All poses stand on one common ground baseline near the bottom of the cells (but with empty space beneath the feet), unless the action leaves the ground (a jump), then vary height to show the arc.\n\n")
 
 	b.WriteString(canvasContract())
 	b.WriteString("\n")
