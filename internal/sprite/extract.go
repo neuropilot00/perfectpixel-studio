@@ -156,8 +156,7 @@ func extractContent(strip *image.NRGBA, span colSpan, h int) frameContent {
 	// 수평 앵커: 몸 전체 무게중심은 다리/팔 스윙에 따라 흔들려 프레임 간 미끄러짐(버벅)을
 	// 유발하므로, 상체(상단 55% = 머리+몸통)의 무게중심을 앵커로 쓴다. 걷기/달리기에서
 	// 상체는 거의 제자리라 프레임 정렬이 안정된다. 상체 데이터가 없으면 전체 중심으로 폴백.
-	gh := maxY - minY + 1
-	bandH := gh * 55 / 100
+	bandH := gh * 55 / 100 // gh = 콘텐츠 높이(위에서 선언)
 	if bandH < 1 {
 		bandH = gh
 	}
