@@ -209,6 +209,9 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 		fmt.Fprintf(&b, "Choreography: %s\n", hint)
 	}
 	fmt.Fprintf(&b, "Treat the %d poses as evenly timed beats of one continuous motion — pose k is phase k of %d, and neighbours read as smooth in-betweens, never unrelated stances.\n", n, n)
+	if sched := gaitSchedule(spec.Name, n); sched != "" {
+		b.WriteString(sched)
+	}
 
 	// 보편 애니메이션 원칙 — 모든 동작이 자연스럽게 읽히도록 (12원칙 요약)
 	b.WriteString("Animation craft (make the motion read naturally, apply to every pose):\n")
@@ -243,6 +246,57 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 	if f := strings.TrimSpace(feedback); f != "" {
 		fmt.Fprintf(&b, "\nArtist revision (apply over everything above): %s\n", f)
 	}
+	return b.String()
+}
+
+// isLocomotion은 다리 교대가 필요한 보행류 상태인지 판별합니다.
+func isLocomotion(name string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	for _, k := range []string{"walk", "run", "sprint", "jog", "march", "dash", "걷", "달리", "뛰", "질주"} {
+		if strings.Contains(n, k) {
+			return true
+		}
+	}
+	return false
+}
+
+// gaitSchedule은 보행류(걷기/달리기/질주)에 대해 칸별로 "어느 발이 앞인지"를 명시한
+// 스케줄 텍스트를 만듭니다. 일반 규칙("다리를 교대하라")은 모델이 같은 다리만 반복해
+// 무시하기 쉬워, 사이클을 두 stride(앞 절반=오른발 주도, 뒤 절반=왼발 주도)로 나눠
+// 각 칸의 앞발·뒷발·팔을 못박습니다. 보행류가 아니거나 프레임이 4 미만이면 빈 문자열.
+func gaitSchedule(name string, n int) string {
+	if !isLocomotion(name) || n < 4 {
+		return ""
+	}
+	half := n / 2
+	var b strings.Builder
+	b.WriteString("Per-pose LEG schedule — THIS IS THE SINGLE MOST IMPORTANT RULE. The cycle is TWO mirrored strides; the legs MUST swap lead at the midpoint. Draw each cell EXACTLY as specified:\n")
+	for i := 0; i < n; i++ {
+		var lead, trail string
+		var pos, span int
+		if i < half {
+			lead, trail = "RIGHT", "LEFT"
+			pos, span = i, half
+		} else {
+			lead, trail = "LEFT", "RIGHT"
+			pos, span = i-half, n-half
+		}
+		frac := 0.0
+		if span > 1 {
+			frac = float64(pos) / float64(span-1)
+		}
+		var phase string
+		switch {
+		case frac < 0.34:
+			phase = fmt.Sprintf("%s foot striking forward and planting, %s leg trailing far behind", lead, trail)
+		case frac < 0.67:
+			phase = fmt.Sprintf("body passing directly over the planted %s leg, %s knee driving up and forward (mid-stride, may be airborne)", lead, trail)
+		default:
+			phase = fmt.Sprintf("%s leg pushing off behind while the %s foot reaches forward to take the next strike (legs about to swap)", lead, trail)
+		}
+		fmt.Fprintf(&b, "- Pose %d: %s. The %s arm swings forward (opposite the forward leg).\n", i+1, phase, strings.ToLower(trail))
+	}
+	fmt.Fprintf(&b, "- CRITICAL: Pose %d MUST show the LEFT leg forward — the OPPOSITE of Pose 1's right-leg-forward. If Pose %d looks like Pose 1 (same leg forward), the whole cycle is WRONG. Never take two strides on the same leg.\n", half+1, half+1)
 	return b.String()
 }
 
