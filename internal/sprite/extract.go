@@ -364,6 +364,7 @@ func ExtractFrames(strip *image.NRGBA, expected, cellW, cellH, margin int) Extra
 		return res
 	}
 	h := strip.Rect.Dy()
+	w := strip.Rect.Dx()
 
 	// 전체 스트립을 연결성분으로 라벨링. 유의미 성분(최대의 2% 이상) 수가 세그먼트 수
 	// 이상이면 = 포즈들이 서로 떨어져 있다는 뜻 → 성분 기반 추출(발이 옆으로 뻗어도 안 잘림).
@@ -379,6 +380,18 @@ func ExtractFrames(strip *image.NRGBA, expected, cellW, cellH, margin int) Extra
 	for _, c := range comps {
 		if c.size*100 >= maxSize*2 {
 			sig++
+		}
+	}
+
+	// 잘림 감지: 유의미 성분이 캔버스 가장자리에 닿으면(세로로 위·아래를 거의 다 채우거나
+	// 좌/우 끝에 붙으면) figure가 캔버스 밖으로 삐져나가 머리/발/몸통이 잘린 채 생성됐을 가능성.
+	for _, c := range comps {
+		if c.size*100 < maxSize*2 {
+			continue
+		}
+		if (c.minY <= 1 && c.maxY >= h-2) || c.minX <= 0 || c.maxX >= w-1 {
+			res.Clipped = true
+			break
 		}
 	}
 

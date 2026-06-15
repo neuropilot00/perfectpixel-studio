@@ -62,3 +62,20 @@ func TestComponentKeepsFarFoot(t *testing.T) {
 		t.Fatalf("프레임 수 오류: %d (%v)", res.Found, res.Warnings)
 	}
 }
+
+// TestExtractClipDetection은 figure가 캔버스 위·아래를 꽉 채우면(=잘려 생성됨) Clipped가
+// 켜지고, 여백이 있으면 꺼지는지 검증합니다.
+func TestExtractClipDetection(t *testing.T) {
+	// 캔버스 전체 높이를 채움 → 잘림 의심
+	full := image.NewNRGBA(image.Rect(0, 0, 200, 100))
+	fillBox(full, 60, 0, 110, 99, 200, 100, 50)
+	if r := ExtractFrames(full, 1, 200, 200, 8); !r.Clipped {
+		t.Fatalf("전체 높이 포즈인데 Clipped 미감지")
+	}
+	// 사방 여백 있음 → 잘림 아님
+	ok := image.NewNRGBA(image.Rect(0, 0, 200, 100))
+	fillBox(ok, 70, 20, 110, 78, 200, 100, 50)
+	if r := ExtractFrames(ok, 1, 200, 200, 8); r.Clipped {
+		t.Fatalf("여백 있는 포즈인데 Clipped 오감지")
+	}
+}

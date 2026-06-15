@@ -1078,14 +1078,22 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 			cand.Warnings = append(cand.Warnings,
 				fmt.Sprintf("거의 같은 포즈가 연속된 프레임이 %d쌍 있습니다(그 지점에서 버벅임). 재생성을 권장합니다.", dupPairs))
 		}
+		if extracted.Clipped {
+			cand.Warnings = append(cand.Warnings,
+				"일부 포즈가 캔버스 가장자리에 닿아 머리·발·몸통이 잘렸을 수 있습니다. 캐릭터를 더 작게 그리도록 자동 재시도합니다.")
+		}
 
-		// 프레임 수가 정확하고 심각한 품질 문제도 중복도 없으면 즉시 성공
-		if cand.Found == expected && insp.Ok() && dupPairs == 0 {
+		// 프레임 수가 정확하고 심각한 품질 문제도 중복도 잘림도 없으면 즉시 성공
+		if cand.Found == expected && insp.Ok() && dupPairs == 0 && !extracted.Clipped {
 			saveGalleryFrames(args.State.Name, extracted.Frames)
 			return cand, nil
 		}
-		// 최선 후보 갱신: 프레임 수 우선, 같으면 오류·중복 적은 쪽
-		score := cand.Found*100 - errCount*10 - dupPairs*5
+		// 최선 후보 갱신: 프레임 수 우선, 같으면 오류·중복·잘림 적은 쪽
+		clipPenalty := 0
+		if extracted.Clipped {
+			clipPenalty = 50
+		}
+		score := cand.Found*100 - errCount*10 - dupPairs*5 - clipPenalty
 		if score > bestScore {
 			best, bestScore, bestImgs = cand, score, extracted.Frames
 		}
@@ -1105,6 +1113,10 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 		if dupPairs > 0 {
 			fixes = append(fixes, fmt.Sprintf(
 				"DUPLICATE POSES: %d adjacent frame pair(s) show the SAME pose — this causes a stutter. Make EVERY pose visibly different from its neighbours; never hold or repeat a pose across two adjacent frames. Each frame must advance the motion by a clear, even step.", dupPairs))
+		}
+		if extracted.Clipped {
+			fixes = append(fixes,
+				"CLIPPING: at least one pose ran off the edge of the canvas — its head, feet or body got cut. Draw EVERY figure noticeably SMALLER (about 60% of the cell height) and fully inside its cell, with a clear empty margin of background on ALL FOUR sides. No part of any pose — head, hands, feet, extended limbs — may touch or cross any edge, even in the widest stride.")
 		}
 		auto := strings.Join(fixes, "\n")
 		if args.Feedback != "" {

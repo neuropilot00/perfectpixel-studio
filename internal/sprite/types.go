@@ -20,6 +20,7 @@ type ExtractResult struct {
 	Found    int
 	Expected int
 	Warnings []string
+	Clipped  bool // 포즈가 캔버스 가장자리에 닿음 = 머리/발/몸통이 잘려 생성됐을 가능성
 }
 
 // StateFrames는 아틀라스 합성에 들어가는 상태별 최종 프레임입니다.
