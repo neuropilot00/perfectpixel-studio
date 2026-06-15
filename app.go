@@ -377,6 +377,8 @@ func (a *App) ChatPlan(history, message string) (ChatPlanResult, error) {
 }
 
 // runPlanner는 claude(가능 시) 또는 codex로 프롬프트를 실행해 응답 텍스트를 반환합니다.
+// 두 CLI 모두 stderr로 진단 로그(타임스탬프 ERROR 등)를 쏟으므로, 응답으로는
+// stdout(또는 codex의 --output-last-message 파일)만 사용하고 stderr는 오류 진단용으로만 씁니다.
 func (a *App) runPlanner(prompt string) (string, error) {
 	if claude := gen.FindBin("claude"); claude != "claude" {
 		ctx, cancel := context.WithTimeout(a.ctx, 90*time.Second)
@@ -387,8 +389,11 @@ func (a *App) runPlanner(prompt string) (string, error) {
 			env = append(env, "CLAUDE_CODE_OAUTH_TOKEN="+tok)
 		}
 		cmd.Env = env
-		if out, err := cmd.CombinedOutput(); err == nil {
-			s := strings.TrimSpace(string(out))
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err == nil {
+			s := strings.TrimSpace(stdout.String())
 			low := strings.ToLower(s)
 			if s != "" && !strings.Contains(low, "not logged in") && !strings.Contains(low, "invalid authentication") {
 				cancel()
@@ -397,17 +402,45 @@ func (a *App) runPlanner(prompt string) (string, error) {
 		}
 		cancel()
 	}
+
+	// codex: --output-last-message로 최종 답변만 파일로 받음(stdout/stderr의 세션 로그 배제)
 	codex := gen.CodexBinPath()
 	ctx, cancel := context.WithTimeout(a.ctx, 120*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, codex, "exec", "--skip-git-repo-check", "--sandbox", "read-only", prompt)
+	tmp, err := os.CreateTemp("", "ppplan-*.txt")
+	if err != nil {
+		return "", fmt.Errorf("기획자 임시 파일 생성 실패: %w", err)
+	}
+	outPath := tmp.Name()
+	tmp.Close()
+	defer os.Remove(outPath)
+
+	cmd := exec.CommandContext(ctx, codex, "exec", "--skip-git-repo-check",
+		"--sandbox", "read-only", "--color", "never",
+		"--output-last-message", outPath, prompt)
 	cmd.Stdin = nil
 	cmd.Env = gen.AugmentedEnv()
-	out, err := cmd.CombinedOutput()
-	if err != nil {
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = nil
+	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("기획자 호출 실패: %v", err)
 	}
-	return strings.TrimSpace(string(out)), nil
+	data, _ := os.ReadFile(outPath)
+	s := strings.TrimSpace(string(data))
+	if s == "" {
+		return "", fmt.Errorf("기획자 응답이 비었습니다: %s", tailString(stderr.String(), 300))
+	}
+	return s, nil
+}
+
+// tailString은 문자열의 마지막 n바이트만 반환합니다(로그 꼬리 노출용).
+func tailString(s string, n int) string {
+	s = strings.TrimSpace(s)
+	if len(s) <= n {
+		return s
+	}
+	return "…" + s[len(s)-n:]
 }
 
 // ChoreographArgs는 동작 안무 자동작성 요청입니다.
