@@ -119,6 +119,8 @@ export default function App() {
               .map((st: StateDef) => ({
                 ...st,
                 status: st.status === "generating" ? (st.items?.length > 0 ? "done" : "idle") : st.status,
+                // 마이그레이션: 옛 안무에 박혀있던 프레임 숫자("8-frame" 등) 제거 — 프레임 수 컨트롤과 충돌 방지
+                choreography: (st.choreography ?? "").replace(/\d+\s*-?\s*frame[s]?\s*/gi, ""),
               }));
             setStates(states);
             if (s.selectedId && states.some((x) => x.id === s.selectedId)) setSelectedId(s.selectedId);
