@@ -83,10 +83,6 @@ export default function StatesPanel({
         <span className="step-badge">2</span>
         <span className="panel-title">{t("animation")}</span>
         {states.length > 0 && <span className="hint">{t("items_count", { n: states.length })}</span>}
-        <label className="row" style={{ gap: 5, marginLeft: "auto", fontSize: 11, cursor: "pointer", alignItems: "center" }} title={t("perpose_tip")}>
-          <input type="checkbox" checked={perPose} disabled={busy} onChange={(e) => onPerPose(e.target.checked)} />
-          <span>{t("perpose_label")}</span>
-        </label>
       </div>
 
       <div className="panel-body">
@@ -325,6 +321,10 @@ export default function StatesPanel({
 
       {states.length > 0 && (
         <div className="panel-foot">
+          <label className="row" style={{ gap: 6, marginBottom: 8, fontSize: 12, cursor: "pointer", alignItems: "center" }} title={t("perpose_tip")}>
+            <input type="checkbox" checked={perPose} disabled={busy} onChange={(e) => onPerPose(e.target.checked)} />
+            <span>{t("perpose_label")}</span>
+          </label>
           <Button className="w-full" disabled={!canGenerateAll || busy || pendingCount === 0} onClick={onGenerateAll}>
             {busy ? (
               <>
