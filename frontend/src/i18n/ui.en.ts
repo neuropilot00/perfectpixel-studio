@@ -201,6 +201,8 @@ const en: Record<string, string> = {
   generate: "Generate",
   dir8: "8-way",
   dir8_tip: "Generates 5 directions with AI and mirrors 3 to build an 8-direction set",
+  perpose_label: "Per-frame generation (experimental)",
+  perpose_tip: "Generates each frame separately at full resolution (avoids foot-clipping and resolution loss). Slower and uses more tokens — one generation per frame.",
   generating_progress: "Generating...",
   generate_all_pending: "Generate all {n} pending",
 

@@ -201,6 +201,8 @@ const es: Record<string, string> = {
   generate: "Generar",
   dir8: "8 dir.",
   dir8_tip: "Genera 5 direcciones con IA y refleja 3 para crear un set de 8 direcciones",
+  perpose_label: "Generación por fotograma (experimental)",
+  perpose_tip: "Genera cada fotograma por separado a resolución completa (evita el recorte de pies y la pérdida de resolución). Más lento y usa más tokens: una generación por fotograma.",
   generating_progress: "Generando...",
   generate_all_pending: "Generar las {n} pendientes",
 

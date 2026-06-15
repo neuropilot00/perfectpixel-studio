@@ -201,6 +201,8 @@ const zh: Record<string, string> = {
   generate: "生成",
   dir8: "8方向",
   dir8_tip: "用 AI 生成 5 个方向，并镜像 3 个方向，组成 8 方向组",
+  perpose_label: "逐帧单独生成（实验）",
+  perpose_tip: "每帧以全分辨率单独生成（避免脚部被裁切和分辨率下降）。速度更慢、消耗更多 token——每帧一次生成。",
   generating_progress: "正在生成...",
   generate_all_pending: "生成全部 {n} 个未生成项",
 

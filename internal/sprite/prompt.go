@@ -244,6 +244,91 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 	return b.String()
 }
 
+// BuildPosePrompt는 "프레임별 개별 생성"용 단일 포즈 프롬프트를 만듭니다(프레임 idx/total).
+// 한 장에 한 포즈만 풀캔버스로 그려, 칸 쪼개기로 인한 해상도 저하·발 잘림을 없앱니다.
+// 직전 프레임이 두 번째 레퍼런스로 들어오면(refs>1) 그로부터 한 단계 진행하도록 지시합니다.
+func BuildPosePrompt(description, style string, spec StateSpec, idx, total int, hasPrev bool, feedback string) string {
+	var b strings.Builder
+	phase := idx + 1
+
+	fmt.Fprintf(&b, "Draw ONE single game-sprite pose of one character: pose #%d of %d in a \"%s\" animation cycle. This is raw sprite art — one whole figure on a flat background, not a sheet, strip, grid, photo, or film.\n\n", phase, total, spec.Name)
+
+	b.WriteString("Subject lock (top priority):\n")
+	b.WriteString("- The FIRST attached image is the canonical character — the single source of truth. Copy its identity pixel-for-pixel: silhouette, proportions, face, hairstyle, build, outfit, accessories. ONLY the body pose changes; the character must look like the exact same drawing.\n")
+	b.WriteString("- Palette is binding. Re-sample each region's hue, saturation and value from the reference. Do not re-tint, re-light, brighten, darken, or substitute shades.\n")
+	b.WriteString("- One fixed camera and facing. The figure never rotates, mirrors, ages, or restyles — only the body moves.\n\n")
+
+	if d := strings.TrimSpace(description); d != "" {
+		fmt.Fprintf(&b, "Subject notes: %s.\n\n", d)
+	}
+	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
+
+	if sec := FacingPromptSection(spec.Facing); sec != "" {
+		b.WriteString(sec)
+		b.WriteString("\n")
+	}
+
+	action := strings.TrimSpace(spec.Action)
+	if action == "" {
+		action = spec.Name
+	}
+	fmt.Fprintf(&b, "Movement: %s.\n", action)
+	hint := strings.TrimSpace(spec.Choreography)
+	if hint == "" {
+		hint = MotionHint(spec.Name)
+	}
+	if hint != "" {
+		fmt.Fprintf(&b, "Overall choreography of the full cycle (for context): %s\n", hint)
+	}
+
+	// 이 프레임의 위상(phase)을 명시 — N등분된 한 박자
+	frac := float64(idx) / float64(total)
+	fmt.Fprintf(&b, "This pose is phase %d/%d (%.0f%%) of the cycle — one evenly-timed beat of the continuous motion.\n", phase, total, frac*100)
+	if hasPrev {
+		b.WriteString("The SECOND attached image is the PREVIOUS pose in this cycle. Advance the motion by exactly ONE even step from it: clearly different limb configuration, weight shifted onward along the motion arc. Do NOT repeat or near-duplicate the previous pose, and do NOT skip ahead two steps.\n")
+	}
+	if spec.Loop {
+		if idx == total-1 {
+			b.WriteString("This is the LAST pose before the cycle returns to pose #1: it must lead smoothly back into pose #1 (one single step away from it), without duplicating it — so the loop has no hitch.\n")
+		}
+		// 보행류는 다리 교대를 강제
+		if isLocomotion(spec.Name) {
+			if phase%2 == 1 {
+				b.WriteString("Locomotion gait: this beat drives with the LEFT leg forward and the RIGHT arm forward (opposite limbs).\n")
+			} else {
+				b.WriteString("Locomotion gait: this beat MIRRORS the previous — RIGHT leg forward and LEFT arm forward. Strictly alternate legs every beat; never step twice with the same leg.\n")
+			}
+		}
+	}
+	b.WriteString("\n")
+
+	b.WriteString("Animation craft: clear weight & balance (feet plant believably, never weightless/sliding), limbs travel on curved arcs, loose parts (hair/cloth/cape) trail a beat behind. Keep the pose readable at thumbnail size: bold silhouette, clear separated limbs.\n\n")
+
+	b.WriteString("Framing:\n")
+	b.WriteString("- A single figure, the WHOLE body in frame head to feet, vertically centered, occupying about three quarters of the canvas height with generous margin on every side. NOTHING is clipped by any edge — feet, hands, hair, weapon all fully inside with empty space around them.\n")
+	b.WriteString("- One continuous silhouette — nothing detached, no trailing accessories or particles.\n\n")
+
+	b.WriteString(canvasContract())
+	b.WriteString("\n")
+	b.WriteString(rejectClause())
+
+	if f := strings.TrimSpace(feedback); f != "" {
+		fmt.Fprintf(&b, "\nArtist revision (apply over everything above): %s\n", f)
+	}
+	return b.String()
+}
+
+// isLocomotion은 다리 교대가 필요한 보행류 상태인지 판별합니다.
+func isLocomotion(name string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	for _, k := range []string{"walk", "run", "sprint", "jog", "march", "dash", "걷", "달리", "뛰"} {
+		if strings.Contains(n, k) {
+			return true
+		}
+	}
+	return false
+}
+
 // AspectForFrames는 프레임 수에 맞는 생성 종횡비를 고릅니다.
 func AspectForFrames(frames int) string {
 	switch {

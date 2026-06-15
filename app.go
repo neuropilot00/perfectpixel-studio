@@ -943,6 +943,7 @@ type GenerateStateArgs struct {
 	SafeMargin  int              `json:"safeMargin"`
 	Feedback    string           `json:"feedback"`
 	RefStrip    string           `json:"refStrip"` // 정면(south) 스트립 dataURL — 방향 세트 생성 시 모션 참조용
+	Mode        string           `json:"mode"`     // "" = 한 장 스트립(기본), "perpose" = 프레임별 개별 생성(실험)
 	State       sprite.StateSpec `json:"state"`
 }
 
@@ -962,6 +963,9 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 
 	if args.State.Frames < 1 || args.State.Frames > 16 {
 		return res, errors.New("프레임 수는 1~16 사이여야 합니다")
+	}
+	if args.Mode == "perpose" {
+		return a.generateStatePerPose(args)
 	}
 	baseRaw, err := decodeDataURL(args.BaseImage)
 	if err != nil {
@@ -1135,6 +1139,117 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 	}
 	saveGalleryFrames(args.State.Name, bestImgs)
 	return best, nil
+}
+
+// generateStatePerPose는 프레임을 한 장씩 풀해상도로 개별 생성합니다(실험 모드).
+// 각 프레임: 베이스 캐릭터 + (직전 프레임) 레퍼런스로 한 단계 진행된 단일 포즈를 생성 →
+// 배경 제거 → 콘텐츠 추출. N장을 모아 공유 스케일/공통 베이스라인으로 정렬(ExtractFramesIndividual)
+// 하므로 칸 쪼개기 없이 발 잘림이 없고 프레임당 해상도가 보존됩니다.
+func (a *App) generateStatePerPose(args GenerateStateArgs) (StateResult, error) {
+	res := StateResult{Name: args.State.Name, Expected: args.State.Frames}
+	baseRaw, err := decodeDataURL(args.BaseImage)
+	if err != nil {
+		return res, fmt.Errorf("베이스 이미지 오류: %w", err)
+	}
+	cellSize := args.CellSize
+	if cellSize <= 0 {
+		cellSize = 256
+	}
+	margin := args.SafeMargin
+	if margin <= 0 {
+		margin = max(8, cellSize/12)
+	}
+	style := sprite.ResolveStyle(args.StyleKey, args.StyleCustom)
+	n := args.State.Frames
+
+	var baseN *image.NRGBA
+	if !sprite.IsBackFacing(args.State.Facing) {
+		if bimg, err := decodeImage(baseRaw); err == nil {
+			baseN = sprite.ToNRGBA(bimg)
+		}
+	}
+
+	p, err := a.provider()
+	if err != nil {
+		return res, err
+	}
+	genCtx, releaseGen := a.genContext()
+	defer releaseGen()
+
+	cleans := make([]*image.NRGBA, 0, n)
+	var prevPNG []byte // 직전 프레임(투명 제거 전 원본 생성물) — 일관성 레퍼런스
+	var bgKey [3]uint8
+	bgSet := false
+
+	for i := 0; i < n; i++ {
+		a.emit("progress", map[string]any{"phase": "generate", "state": args.State.Name,
+			"message": fmt.Sprintf("프레임별 생성 중... (%d/%d)", i+1, n)})
+
+		refs := [][]byte{baseRaw}
+		if prevPNG != nil {
+			refs = append(refs, prevPNG)
+		}
+		prompt := sprite.BuildPosePrompt(args.Description, style, args.State, i, n, prevPNG != nil, args.Feedback)
+
+		// 빈 추출이면 1회 재시도
+		var clean *image.NRGBA
+		var rawPNG []byte
+		for attempt := 0; attempt < 2; attempt++ {
+			poseRaw, gerr := p.GenerateImage(genCtx, prompt, refs, "1:1")
+			if gerr != nil {
+				return res, friendlyErr(gerr)
+			}
+			poseImg, derr := decodeImage(poseRaw)
+			if derr != nil {
+				continue
+			}
+			nimg := sprite.ToNRGBA(poseImg)
+			if !bgSet {
+				bgKey = sprite.DetectBackground(nimg)
+				bgSet = true
+			}
+			clean = sprite.RemoveBackground(nimg)
+			rawPNG = poseRaw
+			break
+		}
+		if clean == nil {
+			res.Warnings = append(res.Warnings, fmt.Sprintf("프레임 %d 생성 실패(건너뜀)", i+1))
+			continue
+		}
+		cleans = append(cleans, clean)
+		prevPNG = rawPNG // 다음 프레임의 진행 레퍼런스로 원본 생성물 사용
+	}
+
+	if len(cleans) == 0 {
+		return res, errors.New("프레임을 한 장도 생성하지 못했습니다. 다시 시도해 주세요")
+	}
+
+	a.emit("progress", map[string]any{"phase": "extract", "state": args.State.Name,
+		"message": "프레임 정렬 및 추출 중..."})
+	extracted := sprite.ExtractFramesIndividual(cleans, cellSize, cellSize, margin)
+	insp := sprite.InspectFrames(extracted.Frames, bgKey, baseN)
+	sprite.PixelPostProcess(extracted.Frames, sprite.PaletteSizeForStyle(args.StyleKey))
+
+	res.Found = extracted.Found
+	res.Warnings = append(res.Warnings, extracted.Warnings...)
+	for _, f := range extracted.Frames {
+		u, err := pngDataURL(f)
+		if err != nil {
+			return res, err
+		}
+		res.Frames = append(res.Frames, u)
+	}
+	res.Warnings = append(res.Warnings, insp.Warnings...)
+	if dup := sprite.AdjacentDupPairs(extracted.Frames, 1); dup > 0 {
+		res.Warnings = append(res.Warnings,
+			fmt.Sprintf("거의 같은 포즈가 연속된 프레임이 %d쌍 있습니다. 해당 프레임만 다시 생성하거나 순서를 조정해 보세요.", dup))
+	}
+	if res.Found != n {
+		res.Warnings = append(res.Warnings,
+			fmt.Sprintf("요청 %d개 중 %d개 프레임이 추출되었습니다.", n, res.Found))
+	}
+	saveGalleryFrames(args.State.Name, extracted.Frames)
+	return res, nil
 }
 
 // ---------- 8방향 세트 ----------
