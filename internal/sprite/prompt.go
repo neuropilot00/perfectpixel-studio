@@ -219,7 +219,7 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 	b.WriteString("- Arcs: limbs and the body travel along curved arcs between poses, not straight robotic lines.\n")
 	b.WriteString("- Ease & spacing: cluster poses tighter at the slow start/end and spread them wider through the fast middle, so speed is felt.\n")
 	if spec.Loop {
-		b.WriteString("It loops: the final pose must hand off cleanly into the first with no jump or hitch — frame 1 is the natural in-between after the last frame.\n\n")
+		b.WriteString("It loops SEAMLESSLY: every pose must be DIFFERENT — do NOT repeat or near-duplicate the first pose as the last frame, and never hold the same pose across two adjacent frames. The last pose is the in-between one step BEFORE the first, so wrapping from last to first is a single smooth step with no held/double frame and no hitch anywhere in the cycle.\n\n")
 	} else {
 		b.WriteString("It plays once: give it a clear anticipation, a peak, and a settle that comes to rest.\n\n")
 	}
