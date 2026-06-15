@@ -110,6 +110,14 @@ export function RevealInFinder(arg1) {
   return window['go']['main']['App']['RevealInFinder'](arg1);
 }
 
+export function RigAnimate(arg1) {
+  return window['go']['main']['App']['RigAnimate'](arg1);
+}
+
+export function RigAnimations() {
+  return window['go']['main']['App']['RigAnimations']();
+}
+
 export function SaveClaudeToken(arg1) {
   return window['go']['main']['App']['SaveClaudeToken'](arg1);
 }

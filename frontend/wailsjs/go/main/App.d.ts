@@ -57,6 +57,10 @@ export function PixelizeImage(arg1:main.PixelizeImageArgs):Promise<string>;
 
 export function RevealInFinder(arg1:string):Promise<void>;
 
+export function RigAnimate(arg1:main.RigAnimateArgs):Promise<main.RigAnimateResult>;
+
+export function RigAnimations():Promise<Array<string>>;
+
 export function SaveClaudeToken(arg1:string):Promise<void>;
 
 export function SaveProviderKey(arg1:string,arg2:string):Promise<void>;

@@ -19,6 +19,7 @@ import (
 
 	"perfectpixel/internal/config"
 	"perfectpixel/internal/gen"
+	"perfectpixel/internal/rig"
 	"perfectpixel/internal/sprite"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -699,6 +700,82 @@ func (a *App) GenerateEdit(args GenerateEditArgs) (string, error) {
 	}
 	saveGalleryPNG("edit-"+galleryStamp(), out)
 	return pngDataURL(out)
+}
+
+// ---------- 스켈레톤 리그 애니메이션 (고성능 경로, AI 불필요·오프라인) ----------
+
+// RigAnimateArgs는 캐릭터 1장을 자동 리깅해 애니메이션 프레임을 만드는 요청입니다.
+type RigAnimateArgs struct {
+	Image  string `json:"image"`  // 캐릭터 dataURL(투명 배경 권장)
+	Anim   string `json:"anim"`   // walk | run | idle
+	Frames int    `json:"frames"` // 프레임 수(1~24)
+}
+
+// RigAnimateResult는 렌더된 프레임들과 가로 스프라이트 시트입니다.
+type RigAnimateResult struct {
+	Frames []string `json:"frames"` // 각 프레임 dataURL
+	Sheet  string   `json:"sheet"`  // 가로 시트 dataURL
+}
+
+// RigAnimations는 사용 가능한 내장 모션 목록을 반환합니다.
+func (a *App) RigAnimations() []string {
+	return []string{"walk", "run", "idle"}
+}
+
+// RigAnimate는 캐릭터를 자동 리깅(부위 분할+스켈레톤)하고 모션을 적용해 프레임을 렌더링합니다.
+// AI 생성이 아니라 로컬 스켈레탈 렌더라 키/로그인이 필요 없고 빠릅니다.
+func (a *App) RigAnimate(args RigAnimateArgs) (RigAnimateResult, error) {
+	var res RigAnimateResult
+	raw, err := decodeDataURL(args.Image)
+	if err != nil {
+		return res, fmt.Errorf("이미지 오류: %w", err)
+	}
+	img, err := decodeImage(raw)
+	if err != nil {
+		return res, err
+	}
+	nr := sprite.ToNRGBA(img)
+	sk := rig.AutoRigHumanoid(nr)
+
+	anim := rig.MotionLibrary()[args.Anim]
+	if anim == nil {
+		anim = rig.MotionLibrary()["walk"]
+	}
+	n := args.Frames
+	if n < 1 {
+		n = 8
+	}
+	if n > 24 {
+		n = 24
+	}
+	w := nr.Rect.Dx()
+	h := nr.Rect.Dy() + nr.Rect.Dy()/10 // 다리 스윙 여유
+
+	frames := rig.RenderFrames(sk, anim, n, w, h)
+	sheet := image.NewNRGBA(image.Rect(0, 0, w*len(frames), h))
+	for i, f := range frames {
+		url, err := pngDataURL(f)
+		if err != nil {
+			return res, err
+		}
+		res.Frames = append(res.Frames, url)
+		// 시트에 합성
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				si := f.PixOffset(x, y)
+				if f.Pix[si+3] == 0 {
+					continue
+				}
+				di := sheet.PixOffset(i*w+x, y)
+				copy(sheet.Pix[di:di+4], f.Pix[si:si+4])
+			}
+		}
+	}
+	if res.Sheet, err = pngDataURL(sheet); err != nil {
+		return res, err
+	}
+	saveGalleryPNG("riganim-"+args.Anim+"-"+galleryStamp(), sheet)
+	return res, nil
 }
 
 // GenerateCharacterRefArgs는 레퍼런스 이미지 화풍으로 새 캐릭터를 만드는 요청입니다.

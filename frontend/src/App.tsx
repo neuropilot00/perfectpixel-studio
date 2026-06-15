@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, HelpCircle, Images, Package, Palette, Plus, Settings, Sparkles, Users, Wand2, X } from "lucide-react";
+import { Bot, HelpCircle, Images, Package, Palette, PersonStanding, Plus, Settings, Sparkles, Users, Wand2, X } from "lucide-react";
 import { CancelGeneration, ClearSession, ExportProject, GenerateState, GetSettings, ListDirections, ListPresets, LoadSession, MirrorFrames, RevealInFinder, SaveSession, CodexStatus } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import CharacterPanel from "./components/CharacterPanel";
@@ -12,6 +12,7 @@ import ChatModal from "./components/ChatModal";
 import VariantsModal from "./components/VariantsModal";
 import EditModal from "./components/EditModal";
 import HelpModal from "./components/HelpModal";
+import RigModal from "./components/RigModal";
 import { Button } from "./components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./components/ui/dialog";
 import { CharacterDef, DirectionInfo, FALLBACK_PRESETS, FrameItem, PresetInfo, StateDef, selectedFrames, uid } from "./types";
@@ -46,6 +47,7 @@ export default function App() {
   const [showVariants, setShowVariants] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showRig, setShowRig] = useState(false);
   const [makeOpen, setMakeOpen] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [character, setCharacter] = useState<CharacterDef>({
@@ -586,6 +588,9 @@ export default function App() {
                   <Button variant="ghost" size="sm" style={{ justifyContent: "flex-start" }} onClick={() => { setShowAssets(true); setMakeOpen(false); }}>
                     <Palette size={13} /> {t("asset_studio")}
                   </Button>
+                  <Button variant="ghost" size="sm" style={{ justifyContent: "flex-start" }} onClick={() => { setShowRig(true); setMakeOpen(false); }}>
+                    <PersonStanding size={13} /> {t("rig_studio")}
+                  </Button>
                 </div>
               </>
             )}
@@ -698,6 +703,8 @@ export default function App() {
       {showEdit && <EditModal baseImage={character.image} onClose={() => setShowEdit(false)} onToast={toast} onUse={useAsCharacter} />}
 
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+
+      {showRig && <RigModal baseImage={character.image} onClose={() => setShowRig(false)} onToast={toast} />}
 
       <Dialog open={confirmNew} onOpenChange={(o) => !o && setConfirmNew(false)}>
         <DialogContent className="w-[380px]">
