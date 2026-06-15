@@ -944,7 +944,9 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 	}
 
 	style := sprite.ResolveStyle(args.StyleKey, args.StyleCustom)
-	aspect := sprite.AspectForFrames(args.State.Frames)
+	// 정사각 그리드 레이아웃: 큰 셀 + 고정 경계로 발 잘림/이웃 침범을 줄인다.
+	gridCols, gridRows := sprite.GridDims(args.State.Frames)
+	aspect := "1:1"
 
 	p, err := a.provider()
 	if err != nil {
@@ -980,7 +982,7 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 	var lastErr error
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		prompt := sprite.BuildStripPrompt(args.Description, style, args.State, feedback)
+		prompt := sprite.BuildGridPrompt(args.Description, style, args.State, gridCols, gridRows, feedback)
 		if len(refs) > 1 {
 			prompt += "\nMotion reference: the second attached image is the FRONT-view animation strip of this same character performing this exact action. Reproduce the same motion timing and pose phases frame by frame, but viewed from the required facing direction above.\n"
 		}
@@ -1011,7 +1013,7 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 		if rawURL, err := pngDataURL(clean); err == nil {
 			cand.RawStrip = rawURL
 		}
-		extracted := sprite.ExtractFrames(clean, expected, cellSize, cellSize, margin)
+		extracted := sprite.ExtractFramesGrid(clean, expected, gridCols, gridRows, cellSize, cellSize, margin)
 		// 프레임별 품질 검사는 양자화 전 원본 프레임에 수행 (양자화로 미세한
 		// 정체성 차이가 뭉개지면 drift 감지 민감도가 떨어짐)
 		insp := sprite.InspectFrames(extracted.Frames, bgKey, baseN)
@@ -1062,8 +1064,8 @@ func (a *App) GenerateState(args GenerateStateArgs) (StateResult, error) {
 		var fixes []string
 		if cand.Found != expected {
 			fixes = append(fixes, fmt.Sprintf(
-				"IMPORTANT CORRECTION: the last attempt read as %d poses but EXACTLY %d are required. Redraw as one horizontal row of %d equally sized poses, one clearly separated pose per column, each ringed by a clean magenta gap so none touch or overlap. Do not draw any frame, border, or film strip.",
-				cand.Found, expected, expected))
+				"IMPORTANT CORRECTION: the last attempt read as %d poses but EXACTLY %d are required. Redraw on a %d×%d grid of equal square cells, exactly one clearly separated pose per cell in reading order (left to right, top to bottom), each pose ringed by a clean magenta gap so none touch or overlap or cross a cell boundary. Leave any trailing cells empty. Do not draw any frame, border, or grid lines.",
+				cand.Found, expected, gridCols, gridRows))
 		}
 		if len(insp.RetryHints) > 0 {
 			fixes = append(fixes, "QUALITY CORRECTIONS detected by automated inspection (fix all of these):")

@@ -3,6 +3,7 @@ package sprite
 import (
 	"fmt"
 	"image"
+	"math"
 
 	xdraw "golang.org/x/image/draw"
 )
@@ -22,9 +23,8 @@ type frameContent struct {
 // 컬럼 알파 프로파일에서 런(run)을 찾아, 최대 질량 런과 가깝거나 충분히 큰 런만 유지합니다.
 func keepColMask(strip *image.NRGBA, span colSpan, h int) []bool {
 	w := span.end - span.start
-	mask := make([]bool, w)
 	if w <= 0 {
-		return mask
+		return make([]bool, 0)
 	}
 	col := make([]float64, w)
 	for i := 0; i < w; i++ {
@@ -34,6 +34,18 @@ func keepColMask(strip *image.NRGBA, span colSpan, h int) []bool {
 			s += float64(strip.Pix[strip.PixOffset(x, y)+3])
 		}
 		col[i] = s
+	}
+	return dominantColMask(col)
+}
+
+// dominantColMask는 컬럼 알파 합 프로파일에서 "메인 몸체" 컬럼만 true로 표시합니다.
+// 런(run)을 찾아, 최대 질량 런과 가깝거나(6% 폭 이내) 충분히 큰(메인의 15% 이상) 런만 유지해
+// 옆 포즈에서 새어든 작고 동떨어진 조각(발끝/신발 등)을 제거합니다.
+func dominantColMask(col []float64) []bool {
+	w := len(col)
+	mask := make([]bool, w)
+	if w == 0 {
+		return mask
 	}
 	type run struct {
 		s, e int
@@ -215,7 +227,22 @@ func ExtractFrames(strip *image.NRGBA, expected, cellW, cellH, margin int) Extra
 		return res
 	}
 
-	// 공통 베이스라인 + 공유 스케일
+	res.Frames = placeFrames(fcs, cellW, cellH, margin)
+	res.Found = natural
+	if natural != expected {
+		res.Warnings = append(res.Warnings,
+			fmt.Sprintf("기대한 %d개와 다른 %d개의 포즈가 감지되었습니다. 포즈가 겹쳤거나 누락됐을 수 있어 재생성을 권장합니다.", expected, natural))
+	}
+	return res
+}
+
+// placeFrames는 추출된 콘텐츠들을 공통 베이스라인 + 공유 스케일로 셀에 배치합니다.
+// (스트립/그리드 추출 공용)
+func placeFrames(fcs []frameContent, cellW, cellH, margin int) []*image.NRGBA {
+	var out []*image.NRGBA
+	if len(fcs) == 0 {
+		return out
+	}
 	baseline := 0
 	for _, g := range fcs {
 		if g.bottom > baseline {
@@ -241,7 +268,6 @@ func ExtractFrames(strip *image.NRGBA, expected, cellW, cellH, margin int) Extra
 	if scale > 1 {
 		scale = 1
 	}
-
 	for _, g := range fcs {
 		sw := int(float64(g.img.Rect.Dx())*scale + 0.5)
 		sh := int(float64(g.img.Rect.Dy())*scale + 0.5)
@@ -257,10 +283,7 @@ func ExtractFrames(strip *image.NRGBA, expected, cellW, cellH, margin int) Extra
 			xdraw.CatmullRom.Scale(scaled, scaled.Rect, g.img, g.img.Rect, xdraw.Over, nil)
 		}
 		offset := int(float64(baseline-g.bottom)*scale + 0.5)
-
 		cell := image.NewNRGBA(image.Rect(0, 0, cellW, cellH))
-		// 질량 중심이 셀 중앙에 오도록 수평 배치 (팔다리가 한쪽으로 뻗어도
-		// 면적이 큰 몸통이 지배해 프레임 간 흔들림이 적음).
 		left := int(float64(cellW)/2 - (g.cx-float64(g.minX))*scale + 0.5)
 		if left < 0 {
 			left = 0
@@ -273,13 +296,158 @@ func ExtractFrames(strip *image.NRGBA, expected, cellW, cellH, margin int) Extra
 			top = 0
 		}
 		xdraw.Copy(cell, image.Point{X: left, Y: top}, scaled, scaled.Rect, xdraw.Over, nil)
-		res.Frames = append(res.Frames, cell)
+		out = append(out, cell)
 	}
+	return out
+}
 
-	res.Found = natural
-	if natural != expected {
+// GridDims는 프레임 수 n에 맞는 ~정사각 그리드(cols×rows)를 고릅니다.
+func GridDims(n int) (cols, rows int) {
+	if n < 1 {
+		n = 1
+	}
+	cols = int(math.Ceil(math.Sqrt(float64(n))))
+	rows = (n + cols - 1) / cols
+	return cols, rows
+}
+
+// extractContentRect는 [x0,y0,x1,y1) 셀 안의 콘텐츠를 bbox로 잘라냅니다(그리드 셀용).
+// 이웃에서 새어든 작은 조각은 컬럼 런 필터로 제거하고, 수평 앵커는 토르소(조밀 열) 기준.
+func extractContentRect(strip *image.NRGBA, x0, y0, x1, y1 int) frameContent {
+	W, H := strip.Rect.Dx(), strip.Rect.Dy()
+	if x0 < 0 {
+		x0 = 0
+	}
+	if y0 < 0 {
+		y0 = 0
+	}
+	if x1 > W {
+		x1 = W
+	}
+	if y1 > H {
+		y1 = H
+	}
+	if x1 <= x0 || y1 <= y0 {
+		return frameContent{}
+	}
+	cw := x1 - x0
+	col := make([]float64, cw)
+	for i := 0; i < cw; i++ {
+		var s float64
+		for y := y0; y < y1; y++ {
+			s += float64(strip.Pix[strip.PixOffset(x0+i, y)+3])
+		}
+		col[i] = s
+	}
+	keep := dominantColMask(col)
+	minX, minY, maxX, maxY := x1, y1, x0-1, y0-1
+	for i := 0; i < cw; i++ {
+		if !keep[i] {
+			continue
+		}
+		x := x0 + i
+		for y := y0; y < y1; y++ {
+			if strip.Pix[strip.PixOffset(x, y)+3] <= alphaThreshold {
+				continue
+			}
+			if x < minX {
+				minX = x
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if y > maxY {
+				maxY = y
+			}
+		}
+	}
+	if maxX < minX || maxY < minY {
+		return frameContent{}
+	}
+	gw, gh := maxX-minX+1, maxY-minY+1
+	dst := image.NewNRGBA(image.Rect(0, 0, gw, gh))
+	for y := minY; y <= maxY; y++ {
+		for x := minX; x <= maxX; x++ {
+			if !keep[x-x0] {
+				continue
+			}
+			si := strip.PixOffset(x, y)
+			if strip.Pix[si+3] <= alphaThreshold {
+				continue
+			}
+			di := dst.PixOffset(x-minX, y-minY)
+			copy(dst.Pix[di:di+4], strip.Pix[si:si+4])
+		}
+	}
+	// 토르소(가장 조밀한 열 묶음) 중심을 수평 앵커로
+	colCount := make([]int, gw)
+	maxCol := 0
+	for x := 0; x < gw; x++ {
+		c := 0
+		for y := 0; y < gh; y++ {
+			if dst.Pix[dst.PixOffset(x, y)+3] > alphaThreshold {
+				c++
+			}
+		}
+		colCount[x] = c
+		if c > maxCol {
+			maxCol = c
+		}
+	}
+	cx := float64(minX+maxX+1) / 2
+	if maxCol > 0 {
+		thr := maxCol * 60 / 100
+		first, last := -1, -1
+		for x := 0; x < gw; x++ {
+			if colCount[x] >= thr {
+				if first < 0 {
+					first = x
+				}
+				last = x
+			}
+		}
+		if first >= 0 {
+			cx = float64(minX) + float64(first+last)/2
+		}
+	}
+	return frameContent{img: dst, minX: minX, cx: cx, bottom: maxY}
+}
+
+// ExtractFramesGrid는 cols×rows 그리드 시트에서 행우선(좌→우, 위→아래)으로 프레임을 추출합니다.
+// 셀이 크고 경계가 고정이라 포즈가 칸을 넘지 않으면 발 잘림/이웃 침범이 거의 없습니다.
+func ExtractFramesGrid(strip *image.NRGBA, expected, cols, rows, cellW, cellH, margin int) ExtractResult {
+	res := ExtractResult{Expected: expected}
+	if cols < 1 || rows < 1 {
+		cols, rows = GridDims(expected)
+	}
+	W, H := strip.Rect.Dx(), strip.Rect.Dy()
+	cw := float64(W) / float64(cols)
+	ch := float64(H) / float64(rows)
+	var fcs []frameContent
+	for i := 0; i < expected && i < cols*rows; i++ {
+		c := i % cols
+		r := i / cols
+		x0 := int(float64(c) * cw)
+		y0 := int(float64(r) * ch)
+		x1 := int(float64(c+1) * cw)
+		y1 := int(float64(r+1) * ch)
+		fc := extractContentRect(strip, x0, y0, x1, y1)
+		if fc.img != nil {
+			fcs = append(fcs, fc)
+		}
+	}
+	if len(fcs) == 0 {
+		res.Warnings = append(res.Warnings, "그리드에서 캐릭터를 찾지 못했습니다. 다시 생성해 주세요.")
+		return res
+	}
+	res.Frames = placeFrames(fcs, cellW, cellH, margin)
+	res.Found = len(fcs)
+	if res.Found != expected {
 		res.Warnings = append(res.Warnings,
-			fmt.Sprintf("기대한 %d개와 다른 %d개의 포즈가 감지되었습니다. 포즈가 겹쳤거나 누락됐을 수 있어 재생성을 권장합니다.", expected, natural))
+			fmt.Sprintf("기대한 %d개와 다른 %d개의 포즈가 감지되었습니다. 재생성을 권장합니다.", expected, res.Found))
 	}
 	return res
 }

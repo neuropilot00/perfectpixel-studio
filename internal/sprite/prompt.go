@@ -244,6 +244,76 @@ func BuildStripPrompt(description, style string, spec StateSpec, feedback string
 	return b.String()
 }
 
+// BuildGridPrompt는 상태별 정사각 그리드(cols×rows) 생성 프롬프트를 만듭니다.
+// 가로 스트립 대신 큰 정사각 셀에 한 포즈씩 넣어, 발 잘림과 이웃 침범을 줄입니다.
+func BuildGridPrompt(description, style string, spec StateSpec, cols, rows int, feedback string) string {
+	var b strings.Builder
+	n := spec.Frames
+
+	fmt.Fprintf(&b, "Draw exactly %d game-sprite poses of one character for the \"%s\" animation, laid out on a %d-column by %d-row grid, ordered left to right then top to bottom (reading order). This is raw sprite art, not a photo or a film — draw only the character poses on a flat background.\n\n", n, spec.Name, cols, rows)
+
+	b.WriteString("Subject lock (top priority):\n")
+	b.WriteString("- The FIRST attached image is the canonical character — treat it as the single source of truth. Copy its identity pixel-for-pixel: silhouette, proportions, face, hairstyle, build, outfit, accessories. The ONLY thing allowed to change between frames is the body pose; the character itself must look like the exact same drawing in every frame.\n")
+	b.WriteString("- Palette is binding. Re-sample each region's hue, saturation and value from the reference — skin, hair, every garment, every piece of gear. Do not re-tint, re-light, brighten, darken, or substitute a similar shade.\n")
+	b.WriteString("- Hold one fixed camera and facing. The figure never rotates, mirrors, ages, or restyles between poses — only the body moves.\n\n")
+
+	if d := strings.TrimSpace(description); d != "" {
+		fmt.Fprintf(&b, "Subject notes: %s.\n\n", d)
+	}
+	fmt.Fprintf(&b, "Render contract (obey strictly): %s\n\n", style)
+
+	if sec := FacingPromptSection(spec.Facing); sec != "" {
+		b.WriteString(sec)
+		b.WriteString("\n")
+	}
+
+	action := strings.TrimSpace(spec.Action)
+	if action == "" {
+		action = spec.Name
+	}
+	fmt.Fprintf(&b, "Movement: %s.\n", action)
+	hint := strings.TrimSpace(spec.Choreography)
+	if hint == "" {
+		hint = MotionHint(spec.Name)
+	}
+	if hint != "" {
+		fmt.Fprintf(&b, "Choreography: %s\n", hint)
+	}
+	fmt.Fprintf(&b, "Treat the %d poses as evenly timed beats of one continuous motion — pose k is phase k of %d, and neighbours read as smooth in-betweens, never unrelated stances.\n", n, n)
+
+	b.WriteString("Animation craft (make the motion read naturally, apply to every pose):\n")
+	b.WriteString("- Anticipation: before the main action, a small opposite wind-up (load before a throw, dip before a jump).\n")
+	b.WriteString("- Clear key pose: one frame holds the most extreme, readable pose of the action; the others build toward and away from it.\n")
+	b.WriteString("- Follow-through & overlapping action: loose parts (hair, cloth, tail, weapon) lag and trail the body, settling a beat later, not frozen stiff.\n")
+	b.WriteString("- Weight & balance: shift the center of mass and counter-pose the body so it never looks weightless or sliding; feet plant believably.\n")
+	b.WriteString("- Arcs: limbs and the body travel along curved arcs between poses, not straight robotic lines.\n")
+	b.WriteString("- Ease & spacing: cluster poses tighter at the slow start/end and spread them wider through the fast middle, so speed is felt.\n")
+	if spec.Loop {
+		b.WriteString("It loops SEAMLESSLY: every pose must be DIFFERENT — do NOT repeat or near-duplicate the first pose as the last frame, and never hold the same pose across two adjacent frames. The last pose is the in-between one step BEFORE the first, so wrapping from last to first is a single smooth step with no held/double frame and no hitch anywhere in the cycle.\n\n")
+	} else {
+		b.WriteString("It plays once: give it a clear anticipation, a peak, and a settle that comes to rest.\n\n")
+	}
+
+	b.WriteString("Sprite-sheet grid (place each pose by an explicit grid — this is how it is cut later, obey exactly):\n")
+	fmt.Fprintf(&b, "- Divide the canvas into a %d×%d grid of equal-size square cells (%d columns, %d rows). Draw exactly one pose per cell in reading order (left to right, top to bottom), %d poses total. Leave any trailing cells in the last row completely empty (flat background only). Count the poses before finishing.\n", cols, rows, cols, rows, n)
+	b.WriteString("- CENTER each pose inside its own cell: the body's center of mass sits on that cell's centre, with roughly equal empty margin on all four sides of the pose within the cell.\n")
+	b.WriteString("- Each pose stays FULLY inside its own cell with a clear empty margin (at least 15% of the cell) on all four sides; nothing — limb, foot, hair, cape, weapon, effect — crosses a cell boundary into a neighbour. Feet especially must stay well above the cell's bottom edge — never let a foot touch or get clipped by a cell border. If a pose would reach over, scale the whole figure down so it fits with margin.\n")
+	b.WriteString("- Every pose is the SAME size at one shared scale, each filling about 65-75% of the cell. No pose larger, smaller, or set further back than the others.\n")
+	b.WriteString("- Each pose is ONE whole, connected body — never split into separate pieces; poses never touch, overlap, or merge.\n")
+	b.WriteString("- Within each cell the figure stands on a consistent ground line at the same height, unless the action leaves the ground (a jump), then vary height inside the cell to show the arc.\n\n")
+
+	b.WriteString(canvasContract())
+	b.WriteString("\n")
+	b.WriteString(rejectClause())
+	b.WriteString("- Favor changes of pose, weight and expression over decoration; any effect must be opaque, hard-edged, and fused to the body.\n")
+	b.WriteString("- Keep every pose legible at thumbnail size: bold silhouette, clear limbs, no detail that vanishes when shrunk.\n")
+
+	if f := strings.TrimSpace(feedback); f != "" {
+		fmt.Fprintf(&b, "\nArtist revision (apply over everything above): %s\n", f)
+	}
+	return b.String()
+}
+
 // AspectForFrames는 프레임 수에 맞는 생성 종횡비를 고릅니다.
 func AspectForFrames(frames int) string {
 	switch {
