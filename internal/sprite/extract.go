@@ -153,27 +153,38 @@ func extractContent(strip *image.NRGBA, span colSpan, h int) frameContent {
 			copy(dst.Pix[di:di+4], strip.Pix[si:si+4])
 		}
 	}
-	// 수평 앵커: 몸 전체 무게중심은 다리/팔 스윙에 따라 흔들려 프레임 간 미끄러짐(버벅)을
-	// 유발하므로, 상체(상단 55% = 머리+몸통)의 무게중심을 앵커로 쓴다. 걷기/달리기에서
-	// 상체는 거의 제자리라 프레임 정렬이 안정된다. 상체 데이터가 없으면 전체 중심으로 폴백.
-	bandH := gh * 55 / 100 // gh = 콘텐츠 높이(위에서 선언)
-	if bandH < 1 {
-		bandH = gh
-	}
-	var topWX, topW float64
-	for y := 0; y < bandH; y++ {
-		for x := 0; x < dst.Rect.Dx(); x++ {
-			a := dst.Pix[dst.PixOffset(x, y)+3]
-			if a == 0 {
-				continue
+	// 수평 앵커: 몸 전체 무게중심은 팔다리 스윙에 흔들려 프레임 간 미끄러짐(버벅)을 유발한다.
+	// 대신 "가장 조밀한 세로 열 묶음(=토르소/몸통 코어)"의 중심을 앵커로 쓴다. 얇게 뻗은
+	// 팔다리는 열 픽셀 수가 적어 자동 제외되므로 스윙에 불변 → 프레임 정렬이 안정된다.
+	colCount := make([]int, gw)
+	maxCol := 0
+	for x := 0; x < gw; x++ {
+		c := 0
+		for y := 0; y < gh; y++ {
+			if dst.Pix[dst.PixOffset(x, y)+3] > alphaThreshold {
+				c++
 			}
-			topWX += float64(x) * float64(a)
-			topW += float64(a)
+		}
+		colCount[x] = c
+		if c > maxCol {
+			maxCol = c
 		}
 	}
 	cx := float64(minX+maxX+1) / 2
-	if topW > 0 {
-		cx = float64(minX) + topWX/topW // 상체 기준 앵커
+	if maxCol > 0 {
+		thr := maxCol * 60 / 100 // 최대 열 높이의 60% 이상 = 몸통 코어
+		first, last := -1, -1
+		for x := 0; x < gw; x++ {
+			if colCount[x] >= thr {
+				if first < 0 {
+					first = x
+				}
+				last = x
+			}
+		}
+		if first >= 0 {
+			cx = float64(minX) + float64(first+last)/2
+		}
 	} else if sumW > 0 {
 		cx = sumWX / sumW
 	}
