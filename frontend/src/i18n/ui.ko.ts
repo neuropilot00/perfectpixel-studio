@@ -201,8 +201,6 @@ const ko: Record<string, string> = {
   generate: "생성",
   dir8: "8방향",
   dir8_tip: "5방향을 AI로 생성하고 3방향은 좌우 반전으로 채워 8방향 세트를 만듭니다",
-  perpose_label: "프레임별 개별 생성 (실험)",
-  perpose_tip: "프레임을 한 장씩 풀해상도로 따로 생성합니다(발 잘림·해상도 저하 방지). 대신 프레임 수만큼 느리고 토큰을 더 씁니다.",
   generating_progress: "생성 진행 중...",
   generate_all_pending: "미생성 {n}개 모두 생성",
 

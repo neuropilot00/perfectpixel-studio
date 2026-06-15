@@ -260,7 +260,6 @@ export namespace main {
 	    safeMargin: number;
 	    feedback: string;
 	    refStrip: string;
-	    mode: string;
 	    state: sprite.StateSpec;
 	
 	    static createFrom(source: any = {}) {
@@ -277,7 +276,6 @@ export namespace main {
 	        this.safeMargin = source["safeMargin"];
 	        this.feedback = source["feedback"];
 	        this.refStrip = source["refStrip"];
-	        this.mode = source["mode"];
 	        this.state = this.convertValues(source["state"], sprite.StateSpec);
 	    }
 	

@@ -300,31 +300,6 @@ func placeFrames(fcs []frameContent, cellW, cellH, margin int) []*image.NRGBA {
 	return out
 }
 
-// ExtractFramesIndividual는 "프레임별 개별 생성"한 N장의 단일-포즈 투명 이미지들을 받아
-// 하나의 공유 스케일 + 공통 베이스라인으로 정렬해 셀 프레임으로 배치합니다.
-// 각 이미지는 한 포즈만 담고 있다고 가정하고(이미지 전체에서 콘텐츠 bbox 추출),
-// placeFrames로 N장 전체에 동일 스케일/정렬을 적용해 프레임 간 흔들림을 막습니다.
-func ExtractFramesIndividual(cleans []*image.NRGBA, cellW, cellH, margin int) ExtractResult {
-	res := ExtractResult{Expected: len(cleans)}
-	var fcs []frameContent
-	for _, img := range cleans {
-		if img == nil {
-			continue
-		}
-		fc := extractContent(img, colSpan{start: 0, end: img.Rect.Dx()}, img.Rect.Dy())
-		if fc.img != nil {
-			fcs = append(fcs, fc)
-		}
-	}
-	if len(fcs) == 0 {
-		res.Warnings = append(res.Warnings, "생성된 이미지에서 캐릭터를 찾지 못했습니다. 다시 생성해 주세요.")
-		return res
-	}
-	res.Frames = placeFrames(fcs, cellW, cellH, margin)
-	res.Found = len(fcs)
-	return res
-}
-
 func minf(a, b float64) float64 {
 	if a < b {
 		return a

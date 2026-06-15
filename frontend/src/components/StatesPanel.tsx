@@ -23,8 +23,6 @@ interface IProps {
   onAddCustomBatch: (count: number) => void;
   onGenerateDirectionSet: (id: string) => void;
   onChoreograph: (id: string) => Promise<void>;
-  perPose: boolean;
-  onPerPose: (v: boolean) => void;
 }
 
 // 3단계: 애니메이션 상태 구성 패널
@@ -43,8 +41,6 @@ export default function StatesPanel({
   onAddCustomBatch,
   onGenerateDirectionSet,
   onChoreograph,
-  perPose,
-  onPerPose,
 }: IProps) {
   const { t, lang } = useI18n();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -321,10 +317,6 @@ export default function StatesPanel({
 
       {states.length > 0 && (
         <div className="panel-foot">
-          <label className="row" style={{ gap: 6, marginBottom: 8, fontSize: 12, cursor: "pointer", alignItems: "center" }} title={t("perpose_tip")}>
-            <input type="checkbox" checked={perPose} disabled={busy} onChange={(e) => onPerPose(e.target.checked)} />
-            <span>{t("perpose_label")}</span>
-          </label>
           <Button className="w-full" disabled={!canGenerateAll || busy || pendingCount === 0} onClick={onGenerateAll}>
             {busy ? (
               <>

@@ -67,7 +67,6 @@ export default function App() {
   const [toasts, setToasts] = useState<IToast[]>([]);
   const [notReady, setNotReady] = useState(""); // "" = 준비됨, "codex_login" | "no_provider"
   const [hideOnboard, setHideOnboard] = useState(false);
-  const [perPose, setPerPose] = useState(false); // 프레임별 개별 생성(실험) 토글
 
   // 최신 상태 참조 (비동기 루프에서 사용)
   const statesRef = useRef(states);
@@ -76,8 +75,6 @@ export default function App() {
   charRef.current = character;
   const cellRef = useRef(cellSize);
   cellRef.current = cellSize;
-  const perPoseRef = useRef(perPose);
-  perPoseRef.current = perPose;
   const cancelRef = useRef(false); // 전체 생성 루프 중단 플래그
   const busyRef = useRef(busy);
   busyRef.current = busy;
@@ -266,7 +263,6 @@ export default function App() {
         safeMargin: 0,
         feedback,
         refStrip,
-        mode: perPoseRef.current ? "perpose" : "",
         state: { name: st.name, frames: st.frames, fps: st.fps, loop: st.loop, action: st.action, choreography: st.choreography ?? "", facing: st.facing ?? "" },
       } as any);
 
@@ -686,8 +682,6 @@ export default function App() {
             onAddCustomBatch={handleAddCustomBatch}
             onGenerateDirectionSet={handleGenerateDirectionSet}
             onChoreograph={handleChoreograph}
-            perPose={perPose}
-            onPerPose={setPerPose}
           />
         </section>
 
