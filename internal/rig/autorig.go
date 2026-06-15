@@ -59,6 +59,63 @@ func cropRegion(src *image.NRGBA, x0, y0, x1, y1 int) *image.NRGBA {
 	return out
 }
 
+// estimateHeadFrac는 실루엣 폭 프로파일에서 "목"(머리 아래 폭이 잘록해지는 곳)을 찾아
+// 머리 높이 비율을 추정합니다. 치비(큰 머리)~표준을 자동 대응. 못 찾으면 0.26.
+func estimateHeadFrac(src *image.NRGBA, l, t, w, h int) float64 {
+	const def = 0.26
+	if h < 16 || w < 4 {
+		return def
+	}
+	rows := h * 55 / 100
+	width := make([]int, rows)
+	for ry := 0; ry < rows; ry++ {
+		y := t + ry
+		minx, maxx := w, -1
+		for x := 0; x < w; x++ {
+			if src.Pix[src.PixOffset(l+x, y)+3] > 10 {
+				if x < minx {
+					minx = x
+				}
+				if x > maxx {
+					maxx = x
+				}
+			}
+		}
+		if maxx >= 0 {
+			width[ry] = maxx - minx + 1
+		}
+	}
+	headMax, hr := 0, h*35/100
+	for ry := 0; ry < hr && ry < rows; ry++ {
+		if width[ry] > headMax {
+			headMax = width[ry]
+		}
+	}
+	if headMax <= 0 {
+		return def
+	}
+	bestRy, bestW := -1, headMax+1
+	for ry := h * 12 / 100; ry < rows; ry++ {
+		if width[ry] > 0 && width[ry] < bestW {
+			bestW, bestRy = width[ry], ry
+		}
+		if bestRy >= 0 && ry > bestRy+2 && width[ry] > bestW*3/2 {
+			break // 어깨로 다시 넓어짐 → 목 지났음
+		}
+	}
+	if bestRy < 0 || bestW > headMax*80/100 {
+		return def // 뚜렷한 목 없음(통짜 실루엣)
+	}
+	frac := float64(bestRy) / float64(h)
+	if frac < 0.18 {
+		frac = 0.18
+	}
+	if frac > 0.45 {
+		frac = 0.45
+	}
+	return frac
+}
+
 // AutoRigHumanoid는 대략 직립한 휴머노이드/캐릭터 스프라이트를 표준 비율로 자동 분할해
 // 스켈레톤을 만듭니다. 사지를 2분절(상박+하박=팔꿈치, 허벅지+정강이=무릎)로 쪼개므로
 // MotionLibrary의 walk/run/idle에서 무릎·팔꿈치가 굽어 자연스럽게 움직입니다.
@@ -71,16 +128,19 @@ func AutoRigHumanoid(src *image.NRGBA) *Skeleton {
 	fl, ft, fw, fh := float64(l), float64(t), float64(w), float64(h)
 	cx := fl + fw/2
 
-	// 비율 기반 관절(원본 좌표) — 사지를 팔꿈치/무릎에서 분절
-	neckY := ft + 0.27*fh
-	shoulderY := ft + 0.30*fh
-	elbowY := ft + 0.45*fh
-	wristY := ft + 0.62*fh
-	hipY := ft + 0.54*fh
-	kneeY := ft + 0.76*fh
+	// 머리 비율 자동 추정(치비=큰 머리 대응) → 목(neck) 위치 결정
+	hf := estimateHeadFrac(src, l, t, w, h)
+	neckY := ft + hf*fh
+	bodyH := (1 - hf) * fh // 목~발
+	shoulderY := neckY + 0.05*bodyH
+	elbowY := neckY + 0.30*bodyH
+	wristY := neckY + 0.54*bodyH
+	hipY := neckY + 0.40*bodyH
+	kneeY := neckY + 0.70*bodyH
 	ankleY := ft + fh
 
-	headJ := [2]float64{cx, ft + 0.26*fh}
+	// 머리 피벗을 목(neck)에 정확히 둠 → 머리 안 뜸
+	headJ := [2]float64{cx, neckY}
 	hipJ := [2]float64{cx, hipY}
 	shB := [2]float64{cx - 0.12*fw, shoulderY}
 	shF := [2]float64{cx + 0.12*fw, shoulderY}
